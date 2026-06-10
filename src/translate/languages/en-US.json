@@ -275,7 +275,49 @@
         "whatsapp": "WhatsApp Cloud API",
         "facebook": "Facebook",
         "instagram": "Instagram",
-        "evolution": "Evolution"
+        "evolution": "Evolution",
+        "evohub": "EvoHub"
+      },
+      "evohub": {
+        "title": "Connect via EvoHub",
+        "channelType": {
+          "label": "Channel type",
+          "whatsapp": "WhatsApp Cloud API",
+          "facebook": "Facebook",
+          "instagram": "Instagram"
+        },
+        "mode": {
+          "label": "How do you want to connect this channel on EvoHub?",
+          "new": "Create a new channel",
+          "existing": "Link an existing channel"
+        },
+        "metaApp": {
+          "label": "Meta App",
+          "shared": "Evolution Meta App (Cloud)",
+          "sharedHint": "shared",
+          "byoHint": "own (BYO)"
+        },
+        "existingChannel": {
+          "label": "Existing channel",
+          "placeholder": "Select a channel",
+          "empty": "No channels available to link"
+        },
+        "button": {
+          "connect": "Connect via EvoHub",
+          "link": "Link existing channel",
+          "reopen": "Reopen authorization link"
+        },
+        "state": {
+          "creating": "Provisioning channel...",
+          "awaitingAuth": "Waiting for Meta authorization on the Hub...",
+          "connected": "Channel connected",
+          "linking": "Linking...",
+          "linked": "Linked to existing EvoHub channel"
+        },
+        "error": {
+          "load": "Failed to load EvoHub information",
+          "provision": "Failed to provision the EvoHub channel"
+        }
       },
       "token": "Token",
       "number": "Number",
