@@ -7,23 +7,20 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
 import { evohubService } from "@/lib/queries/evohub/evohubService";
-import { EvoHubUiChannelType, HubChannel, HubChannelType, MetaAppOptions } from "@/types/evolution.types";
+import { HubChannel, HubChannelType, MetaAppOptions } from "@/types/evolution.types";
 
 type Mode = "new" | "existing";
 type ConnectState = "idle" | "creating" | "awaiting-meta-auth" | "connected" | "linking" | "linked";
 
-// Mapping de tipo da UI -> tipo do hub (espelha HUB_TYPE_BY_CHANNEL do CRM)
-const HUB_TYPE_BY_CHANNEL: Record<EvoHubUiChannelType, HubChannelType> = {
-  whatsapp_cloud: "whatsapp",
-  facebook_page: "facebook",
-  instagram: "instagram",
-};
+// evolution-api é uma API de WhatsApp — o canal é SEMPRE WhatsApp Cloud.
+// (O EvoHub também suporta Facebook/Instagram, mas isso é escopo do CRM, não daqui.)
+const HUB_TYPE: HubChannelType = "whatsapp";
 
-// FASE 2: trocar para true (ou ler de feature-flag) para habilitar o modo criar-novo.
-const PHASE2_CREATE_NEW = false;
+// Habilita os DOIS modos: criar canal novo (public_link + OAuth Meta) e vincular existente.
+const CREATE_NEW_ENABLED = true;
 
 // O painel NÃO recebe nem envia token (contrato §1, §5): o token é resolvido server-side
-// pelo back-end no link-existing e persistido em Instance.token.
+// pelo back-end e persistido em Instance.token.
 interface EvoHubConnectProps {
   instanceName: string;
   onConnected: () => void;
@@ -32,9 +29,8 @@ interface EvoHubConnectProps {
 export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps) {
   const { t } = useTranslation();
 
-  const [channelType, setChannelType] = useState<EvoHubUiChannelType>("whatsapp_cloud");
-  // FASE 1: inicia em "existing" (caminho funcional). "new" é Fase 2 (atrás da flag).
-  const [mode, setMode] = useState<Mode>(PHASE2_CREATE_NEW ? "new" : "existing");
+  // Default: criar-novo quando habilitado; senão, vincular existente.
+  const [mode, setMode] = useState<Mode>(CREATE_NEW_ENABLED ? "new" : "existing");
 
   // shared vs BYO (modo new). Default: shared se permitido.
   const [metaAppMode, setMetaAppMode] = useState<"shared" | string>("shared");
@@ -46,14 +42,16 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
 
   const [state, setState] = useState<ConnectState>("idle");
   const [publicLink, setPublicLink] = useState<string | null>(null);
+  // hub_channel_id do canal recém-provisionado (criar-novo) — usado para finalizar
+  // via link-existing depois que o usuário autoriza a Meta.
+  const [provisionedChannelId, setProvisionedChannelId] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
 
   const submitting = state === "creating" || state === "linking";
-  const hubType = HUB_TYPE_BY_CHANNEL[channelType];
 
-  // Preview de opções de Meta App (FASE 2 — modo new). Gateado pela flag para não
-  // disparar fetch/toast de uma UI invisível na Fase 1.
+  // Preview de opções de Meta App (modo new — shared vs BYO).
   useEffect(() => {
-    if (!PHASE2_CREATE_NEW) return;
+    if (!CREATE_NEW_ENABLED) return;
     let cancelled = false;
     evohubService
       .getMetaAppOptions()
@@ -76,7 +74,7 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
     if (mode !== "existing") return;
     let cancelled = false;
     evohubService
-      .getAvailableChannels(hubType)
+      .getAvailableChannels(HUB_TYPE)
       .then((chs) => {
         if (!cancelled) setAvailableChannels(chs);
       })
@@ -86,24 +84,26 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
     return () => {
       cancelled = true;
     };
-  }, [mode, hubType, t]);
+  }, [mode, t]);
 
-  // FASE 2 — criar-novo (multi-step, public_link). Só executa com PHASE2_CREATE_NEW=true.
+  // Criar-novo (multi-step, public_link → OAuth Meta).
   const handleNew = async () => {
     setState("creating");
     try {
       const res = await evohubService.provisionNew({
         instanceName,
-        channelType: hubType,
+        channelType: HUB_TYPE,
         metaAppMode,
       });
+      // Guarda o hub_channel_id para finalizar via link-existing após o OAuth.
+      if (res.hub_channel_id) setProvisionedChannelId(res.hub_channel_id);
       if (res.public_link) {
         setPublicLink(res.public_link);
         setState("awaiting-meta-auth");
         window.open(res.public_link, "_blank", "noopener,noreferrer");
       } else {
-        setState("connected");
-        onConnected();
+        // Sem public_link (canal já ativo): finaliza direto.
+        await finalizeNew(res.hub_channel_id ?? null);
       }
     } catch {
       setState("idle");
@@ -111,14 +111,41 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
     }
   };
 
-  // FASE 1 — vincular-existente (single-step). Envia só { instanceName, hub_channel_id,
+  // Finaliza o criar-novo APÓS o usuário autorizar a Meta no public_link: reusa o
+  // link-existing (que JÁ resolve token + phone_number_id server-side e cria a Instance).
+  // Se o canal ainda não tiver phone_number_id (usuário clicou antes de concluir o OAuth),
+  // o back-end devolve 422 e avisamos para concluir e tentar de novo.
+  const finalizeNew = async (channelId: string | null) => {
+    const hubChannelId = channelId ?? provisionedChannelId;
+    if (!hubChannelId) {
+      toast.error(t("instance.form.evohub.error.provision"));
+      return;
+    }
+    setFinalizing(true);
+    try {
+      await evohubService.linkExisting({
+        instanceName,
+        channelType: HUB_TYPE,
+        hubChannelId,
+      });
+      setState("connected");
+      onConnected();
+    } catch {
+      // 422 = canal sem phone_number_id ainda (OAuth não concluído) ou outra falha.
+      toast.error(t("instance.form.evohub.error.notAuthorizedYet"));
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  // Vincular-existente (single-step). Envia só { instanceName, hub_channel_id,
   // channel_type } — sem token (resolvido server-side). A Instance é criada sincronamente.
   const handleExisting = async () => {
     setState("linking");
     try {
       await evohubService.linkExisting({
         instanceName,
-        channelType: hubType,
+        channelType: HUB_TYPE,
         hubChannelId: selectedHubChannelId,
       });
       setState("linked");
@@ -133,25 +160,10 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
     <div className="grid gap-4 rounded-md border p-3">
       <span className="text-sm font-medium">{t("instance.form.evohub.title")}</span>
 
-      {/* Tipo de canal */}
-      <div className="grid gap-1">
-        <Label>{t("instance.form.evohub.channelType.label")}</Label>
-        <Select value={channelType} onValueChange={(v) => setChannelType(v as EvoHubUiChannelType)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="whatsapp_cloud">{t("instance.form.evohub.channelType.whatsapp")}</SelectItem>
-            <SelectItem value="facebook_page">{t("instance.form.evohub.channelType.facebook")}</SelectItem>
-            <SelectItem value="instagram">{t("instance.form.evohub.channelType.instagram")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Modo new/existing. FASE 1: só "existing"; o radio "new" só aparece na Fase 2. */}
+      {/* Modo new/existing */}
       <fieldset className="grid gap-1">
         <legend className="text-sm">{t("instance.form.evohub.mode.label")}</legend>
-        {PHASE2_CREATE_NEW && (
+        {CREATE_NEW_ENABLED && (
           <label className="flex items-center gap-2 text-sm">
             <input type="radio" checked={mode === "new"} onChange={() => setMode("new")} />
             {t("instance.form.evohub.mode.new")}
@@ -163,8 +175,8 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
         </label>
       </fieldset>
 
-      {/* shared vs BYO (apenas modo new — FASE 2) */}
-      {PHASE2_CREATE_NEW && mode === "new" && metaOptions && (
+      {/* shared vs BYO (apenas modo new) */}
+      {CREATE_NEW_ENABLED && mode === "new" && metaOptions && (
         <div className="grid gap-1">
           <Label>{t("instance.form.evohub.metaApp.label")}</Label>
           <Select value={metaAppMode} onValueChange={setMetaAppMode}>
@@ -221,8 +233,15 @@ export function EvoHubConnect({ instanceName, onConnected }: EvoHubConnectProps)
             <ExternalLink className="mr-2 h-4 w-4" />
             {t("instance.form.evohub.button.reopen")}
           </Button>
-          <Button type="button" onClick={onConnected}>
-            {t("instance.form.evohub.state.connected")}
+          {/* Após autorizar a Meta no public_link, finaliza criando a Instance via
+              link-existing (resolve token + phone_number_id server-side). */}
+          <Button type="button" disabled={finalizing} onClick={() => finalizeNew(null)}>
+            {finalizing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Link2 className="mr-2 h-4 w-4" />
+            )}
+            {finalizing ? t("instance.form.evohub.state.linking") : t("instance.form.evohub.button.finalize")}
           </Button>
         </div>
       ) : state === "linked" ? (

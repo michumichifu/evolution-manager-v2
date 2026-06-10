@@ -305,7 +305,8 @@
         "button": {
           "connect": "Connect via EvoHub",
           "link": "Link existing channel",
-          "reopen": "Reopen authorization link"
+          "reopen": "Reopen authorization link",
+          "finalize": "I've authorized, finish"
         },
         "state": {
           "creating": "Provisioning channel...",
@@ -316,7 +317,8 @@
         },
         "error": {
           "load": "Failed to load EvoHub information",
-          "provision": "Failed to provision the EvoHub channel"
+          "provision": "Failed to provision the EvoHub channel",
+          "notAuthorizedYet": "Finish the Meta authorization in the EvoHub tab and try again"
         }
       },
       "token": "Token",

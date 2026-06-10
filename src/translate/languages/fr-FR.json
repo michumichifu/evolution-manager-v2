@@ -261,7 +261,8 @@
         "button": {
           "connect": "Connecter via EvoHub",
           "link": "Lier un canal existant",
-          "reopen": "Rouvrir le lien d'autorisation"
+          "reopen": "Rouvrir le lien d'autorisation",
+          "finalize": "J'ai autorisé, finaliser"
         },
         "state": {
           "creating": "Provisionnement du canal...",
@@ -272,7 +273,8 @@
         },
         "error": {
           "load": "Échec du chargement des informations EvoHub",
-          "provision": "Échec du provisionnement du canal EvoHub"
+          "provision": "Échec du provisionnement du canal EvoHub",
+          "notAuthorizedYet": "Terminez l'autorisation Meta dans l'onglet EvoHub et réessayez"
         }
       },
       "token": "Token",
