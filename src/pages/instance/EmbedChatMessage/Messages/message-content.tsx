@@ -61,7 +61,7 @@ export function MessageContent({ message, quotedMessage, chat, fromMe, onQuoteCl
         };
 
         // Tenta extrair o nome do remetente
-        const senderName = reaction.sender.includes("@g.us") ? "You" || reaction.sender.split("@")[0] : reaction.sender.split("@")[0];
+        const senderName = reaction.sender.includes("@g.us") ? "You" : reaction.sender.split("@")[0];
 
         // Adiciona o remetente à lista de senders deste emoji
         acc[reaction.emoji].senders.push(senderName);

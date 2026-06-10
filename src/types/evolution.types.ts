@@ -43,6 +43,68 @@ export type Instance = {
   };
 };
 
+// ── EvoHub (canal adicional) ──────────────────────────────────────────────
+// integration value usado no payload de /instance/create e no enum do form
+export const EVOHUB_INTEGRATION = "EVOHUB" as const;
+
+// Tipo de canal do hub (espelha HubChannel['type'] do CRM)
+export type HubChannelType = "whatsapp" | "facebook" | "instagram";
+
+// Tipo de canal selecionável na UI do manager-v2 (mapeia para HubChannelType)
+export type EvoHubUiChannelType = "whatsapp_cloud" | "facebook_page" | "instagram";
+
+export interface HubPlan {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  allow_own_meta_app: boolean;
+  allow_shared_meta_app: boolean;
+  max_channels_total: number | null;
+  max_webhooks: number | null;
+  max_byo_credentials: number | null;
+}
+
+export interface MetaAppOptionCred {
+  id: string;
+  name: string;
+  app_id: string;
+}
+
+export interface MetaAppOptions {
+  allowed_modes: ("shared" | "byo")[];
+  shared_configured: boolean;
+  shared_allowed_by_plan: boolean;
+  byo_allowed_by_plan: boolean;
+  max_byo_credentials?: number | null;
+  byo_credentials: MetaAppOptionCred[];
+}
+
+// HubChannel = item da LISTA (GET /evohub/channels e /evohub/available-channels).
+// NÃO inclui token. GET /evohub/channels/:id (singular) adicionalmente carrega
+// `token` + `meta_connection.phone_number_id`, mas isso é resolvido/consumido
+// SERVER-SIDE pelo back-end no link-existing — o front nunca recebe esses campos.
+export interface HubChannel {
+  id: string;
+  name: string;
+  type: HubChannelType;
+  status: string;
+  channel_credentials_id?: string | null;
+  created_at?: string;
+}
+
+// Resposta do control-plane do evolution-api ao vincular/provisionar.
+// FASE 1 (link-existing): a Instance é criada server-side; o retorno traz info da
+// Instance (NUNCA o token — contrato §1, §4-A). Sem public_link.
+// FASE 2 (provision/criar-novo): public_link presente (abrir em nova aba).
+export interface EvoHubProvisionResponse {
+  instanceName: string;
+  integration: string; // "EVOHUB"
+  linked?: boolean; // FASE 1: true quando a Instance foi criada e vinculada
+  hub_channel_id?: string | null;
+  public_link?: string | null; // FASE 2 apenas (criar-novo); ausente na Fase 1
+}
+
 export type Contact = {
   id: string;
   pushName: string;

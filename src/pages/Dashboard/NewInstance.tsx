@@ -15,6 +15,7 @@ import { useManageInstance } from "@/lib/queries/instance/manageInstance";
 
 import { NewInstance as NewInstanceType } from "@/types/evolution.types";
 
+import { EvoHubConnect } from "./EvoHubConnect";
 import { GoNewInstance } from "./GoNewInstance";
 
 const stringOrUndefined = z
@@ -27,7 +28,7 @@ const FormSchema = z.object({
   token: stringOrUndefined,
   number: stringOrUndefined,
   businessId: stringOrUndefined,
-  integration: z.enum(["WHATSAPP-BUSINESS", "WHATSAPP-BAILEYS", "EVOLUTION"]),
+  integration: z.enum(["WHATSAPP-BUSINESS", "WHATSAPP-BAILEYS", "EVOLUTION", "EVOHUB"]),
 });
 
 function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => void; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -46,6 +47,10 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
     {
       value: "EVOLUTION",
       label: t("instance.form.integration.evolution"),
+    },
+    {
+      value: "EVOHUB",
+      label: t("instance.form.integration.evohub"),
     },
   ];
 
@@ -95,6 +100,15 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
     });
   };
 
+  // Conclusão do fluxo EvoHub (link-existing): a Instance foi criada server-side.
+  // Reaproveita o fechamento padrão (fechar diálogo, resetar form e tabela).
+  const onAfterEvoHubConnected = () => {
+    toast.success(t("toast.instance.created"));
+    setOpen(false);
+    onReset();
+    resetTable();
+  };
+
   if (getProvider() === "go") {
     return <GoNewInstance resetTable={resetTable} open={open} onOpenChange={onOpenChange} />;
   }
@@ -122,9 +136,14 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
                 <Input />
               </FormInput>
             )}
-            <DialogFooter>
-              <Button type="submit">{t("instance.button.save")}</Button>
-            </DialogFooter>
+            {integrationSelected === "EVOHUB" && (
+              <EvoHubConnect instanceName={form.watch("name")} onConnected={onAfterEvoHubConnected} />
+            )}
+            {integrationSelected !== "EVOHUB" && (
+              <DialogFooter>
+                <Button type="submit">{t("instance.button.save")}</Button>
+              </DialogFooter>
+            )}
           </form>
         </FormProvider>
       </DialogContent>

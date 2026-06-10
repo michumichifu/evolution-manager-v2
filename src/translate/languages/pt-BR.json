@@ -232,7 +232,51 @@
         "whatsapp": "WhatsApp Cloud API",
         "facebook": "Facebook",
         "instagram": "Instagram",
-        "evolution": "Evolution"
+        "evolution": "Evolution",
+        "evohub": "EvoHub"
+      },
+      "evohub": {
+        "title": "Conectar via EvoHub",
+        "channelType": {
+          "label": "Tipo de canal",
+          "whatsapp": "WhatsApp Cloud API",
+          "facebook": "Facebook",
+          "instagram": "Instagram"
+        },
+        "mode": {
+          "label": "Como conectar este canal no EvoHub?",
+          "new": "Criar um canal novo",
+          "existing": "Vincular um canal existente"
+        },
+        "metaApp": {
+          "label": "Meta App",
+          "shared": "Meta App da Evolution (Cloud)",
+          "sharedHint": "compartilhada",
+          "byoHint": "própria (BYO)"
+        },
+        "existingChannel": {
+          "label": "Canal existente",
+          "placeholder": "Selecione um canal",
+          "empty": "Nenhum canal disponível para vincular"
+        },
+        "button": {
+          "connect": "Conectar via EvoHub",
+          "link": "Vincular canal existente",
+          "reopen": "Reabrir link de autorização",
+          "finalize": "Já autorizei, finalizar"
+        },
+        "state": {
+          "creating": "Provisionando canal...",
+          "awaitingAuth": "Aguardando autorização Meta no Hub...",
+          "connected": "Canal conectado",
+          "linking": "Vinculando...",
+          "linked": "Canal Evo Hub existente vinculado"
+        },
+        "error": {
+          "load": "Falha ao carregar informações do EvoHub",
+          "provision": "Falha ao provisionar o canal EvoHub",
+          "notAuthorizedYet": "Conclua a autorização da Meta na aba do EvoHub e tente novamente"
+        }
       },
       "token": "Token",
       "number": "Número",
