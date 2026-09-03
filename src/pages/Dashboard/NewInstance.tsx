@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -62,6 +63,21 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
 
   const integrationSelected = form.watch("integration");
 
+  // Auto-limpiar token si se selecciona Cloud API para no dejar el UUID de Baileys
+  useEffect(() => {
+    if (integrationSelected === "WHATSAPP-BUSINESS") {
+      const curToken = form.getValues("token");
+      if (!curToken || curToken.length <= 36) {
+        form.setValue("token", "");
+      }
+    } else if (integrationSelected === "WHATSAPP-BAILEYS") {
+      const curToken = form.getValues("token");
+      if (!curToken || curToken.startsWith("EAA")) {
+        form.setValue("token", uuidv4().replace("-", "").toUpperCase());
+      }
+    }
+  }, [integrationSelected]);
+
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
       const instanceData: NewInstanceType = {
@@ -99,6 +115,8 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
     return <GoNewInstance resetTable={resetTable} open={open} onOpenChange={onOpenChange} />;
   }
 
+  const isCloudApi = integrationSelected === "WHATSAPP-BUSINESS";
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[650px]" onCloseAutoFocus={onReset}>
@@ -108,19 +126,47 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
             <FormInput required name="name" label={t("instance.form.name")}>
-              <Input />
+              <Input placeholder={isCloudApi ? "ej: cliente-cloud-api" : ""} />
             </FormInput>
             <FormSelect name="integration" label={t("instance.form.integration.label")} options={options} />
-            <FormInput required name="token" label={t("instance.form.token")}>
-              <Input />
+            
+            <FormInput
+              required
+              name="token"
+              label={isCloudApi ? "Token Permanente de Meta (EAAG... / EAAndd...)" : t("instance.form.token")}
+            >
+              <Input placeholder={isCloudApi ? "Pega el Token de acceso permanente de Meta" : ""} />
             </FormInput>
-            <FormInput name="number" label={t("instance.form.number")}>
-              <Input type="tel" />
+            {isCloudApi && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                📌 En Meta Business Suite &gt; Ajustes &gt; Usuarios del sistema &gt; Generar token (con permisos whatsapp_business_messaging).
+              </p>
+            )}
+
+            <FormInput
+              name="number"
+              label={isCloudApi ? "Phone Number ID (ID del perfil de teléfono)" : t("instance.form.number")}
+            >
+              <Input
+                type={isCloudApi ? "text" : "tel"}
+                placeholder={isCloudApi ? "Ej: 111332491590444 (15 dígitos, NO el número telefónico)" : ""}
+              />
             </FormInput>
-            {integrationSelected === "WHATSAPP-BUSINESS" && (
-              <FormInput required name="businessId" label={t("instance.form.businessId")}>
-                <Input />
-              </FormInput>
+            {isCloudApi && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                📌 En Meta Business Suite &gt; Cuentas de WhatsApp &gt; Clic en el número &gt; Panel lateral "Perfil de teléfono".
+              </p>
+            )}
+
+            {isCloudApi && (
+              <>
+                <FormInput required name="businessId" label="WABA ID (ID de la cuenta de WhatsApp)">
+                  <Input placeholder="Ej: 100118229397347 (Identificador de la cuenta de WhatsApp)" />
+                </FormInput>
+                <p className="-mt-2 text-xs text-muted-foreground">
+                  📌 En Meta Business Suite &gt; Cuentas de WhatsApp &gt; Identificador (debajo del nombre de la empresa).
+                </p>
+              </>
             )}
             <DialogFooter>
               <Button type="submit">{t("instance.button.save")}</Button>

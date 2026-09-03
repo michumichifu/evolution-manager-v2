@@ -26,82 +26,81 @@ const ENDPOINT: Record<TabKey, string> = {
 
 const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
   reply: {
-    title: "Resposta Rápida",
-    description: "Escolha uma das opções abaixo:",
+    title: "Respuesta rápida",
+    description: "Elige una de las opciones:",
     footer: "Evolution API",
     buttons: [
       { type: "reply", displayText: "✅ Confirmar", id: "opt_confirm" },
       { type: "reply", displayText: "❌ Cancelar", id: "opt_cancel" },
-      { type: "reply", displayText: "🤔 Talvez", id: "opt_maybe" },
+      { type: "reply", displayText: "🤔 Tal vez", id: "opt_maybe" },
     ],
   },
   cta: {
-    title: "Botões CTA",
-    description: "Botões de URL e copia-código (cta_url + cta_copy):",
-    footer: "Máx. 2 botões CTA por mensagem",
+    title: "Botones CTA",
+    description: "Botones de enlace y de copiar código (cta_url + cta_copy):",
+    footer: "Máx. 2 botones CTA por mensaje",
     buttons: [
-      { type: "url", displayText: "🌐 Abrir site", url: "https://example.com" },
+      { type: "url", displayText: "🌐 Abrir sitio web", url: "https://ejemplo.com" },
       {
         type: "copy",
-        displayText: "📋 Copiar PIX",
-        copyCode:
-          "00020126580014BR.GOV.BCB.PIX0136abc12345-6789-0000-aaaa-bbbbccccdddd5204000053039865802BR5913FULANO DE TAL6009SAO PAULO62070503***6304ABCD",
+        displayText: "📋 Copiar cupón",
+        copyCode: "PROMO50",
       },
     ],
   },
   pix: {
-    title: "Pagamento via PIX",
-    description: "Toque para pagar via PIX (payment_info)",
+    title: "Pago con PIX",
+    description: "Toca para pagar con PIX (payment_info)",
     footer: "WhatsApp Pay",
     buttons: [
       {
         type: "pix",
         currency: "BRL",
-        name: "Empresa Exemplo",
+        name: "Empresa de Ejemplo",
         keyType: "random",
         key: "abc12345-6789-0000-aaaa-bbbbccccdddd",
       },
     ],
   },
   list: {
-    title: "Cardápio de Teste",
-    description: "Escolha um item abaixo",
-    footerText: "Validade hoje",
-    buttonText: "Ver opções",
+    title: "Menú de servicios",
+    description: "Elige una opción:",
+    footerText: "Disponible hoy",
+    buttonText: "Ver opciones",
     sections: [
       {
-        title: "Bebidas",
+        title: "Consultas",
         rows: [
-          { title: "Coca-Cola", description: "Lata 350ml", rowId: "coca" },
-          { title: "Suco de Laranja", description: "300ml natural", rowId: "suco" },
+          { title: "Evaluación general", description: "Primera cita", rowId: "eval" },
+          { title: "Limpieza dental", description: "Incluye revisión", rowId: "limpieza" },
         ],
       },
       {
-        title: "Lanches",
-        rows: [{ title: "X-Burger", description: "Pão, carne 150g, queijo", rowId: "xburger" }],
+        title: "Tratamientos",
+        rows: [{ title: "Blanqueamiento", description: "Resultados en 1 sesión", rowId: "blanqueamiento" }],
       },
     ],
   },
   carousel: {
-    body: "Catálogo da semana",
+    body: "Catálogo de la semana",
     cards: [
       {
-        body: "Produto A",
-        footer: "R$ 99,90",
+        body: "Servicio A",
+        footer: "RD$ 999",
         imageUrl: "https://picsum.photos/seed/a/600/400",
-        buttons: [{ type: "url", displayText: "Comprar", url: "https://exemplo.com/a" }],
+        buttons: [{ type: "url", displayText: "Comprar", url: "https://ejemplo.com/a" }],
       },
       {
-        body: "Produto B",
-        footer: "R$ 149,90",
+        body: "Servicio B",
+        footer: "RD$ 1,499",
         imageUrl: "https://picsum.photos/seed/b/600/400",
-        buttons: [{ type: "url", displayText: "Comprar", url: "https://exemplo.com/b" }],
+        buttons: [{ type: "url", displayText: "Comprar", url: "https://ejemplo.com/b" }],
       },
       {
-        body: "Produto C",
-        footer: "R$ 199,90",
+        body: "Servicio C",
+        footer: "RD$ 1,999",
         imageUrl: "https://picsum.photos/seed/c/600/400",
-        buttons: [{ type: "reply", displayText: "Quero!", id: "prod_c" }],
+        buttons: [{ type: "reply", displayText: "¡Lo quiero!", id: "serv_c" }],
       },
     ],
   },
@@ -132,10 +131,7 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
     }
   }, [open]);
 
-  const endpoint = useMemo(
-    () => `/message/${ENDPOINT[tab]}/${instance.name}`,
-    [tab, instance.name],
-  );
+  const endpoint = useMemo(() => `/message/${ENDPOINT[tab]}/${instance.name}`, [tab, instance.name]);
 
   const send = async () => {
     const target = number.replace(/\D/g, "");
@@ -162,11 +158,7 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
       toast.success(t("testInteractive.success", { id: msgId }));
       onOpenChange(false);
     } catch (error: any) {
-      const msg =
-        error?.response?.data?.response?.message ||
-        error?.response?.data?.message ||
-        error?.message ||
-        t("testInteractive.errors.unknown");
+      const msg = error?.response?.data?.response?.message || error?.response?.data?.message || error?.message || t("testInteractive.errors.unknown");
       toast.error(Array.isArray(msg) ? msg.join("; ") : msg);
     } finally {
       setSending(false);
@@ -190,8 +182,7 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
 
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            {t("testInteractive.subtitle", { instance: instance.name })}{" "}
-            <code className="rounded bg-muted px-1 py-0.5 text-[11px]">POST {endpoint}</code>
+            {t("testInteractive.subtitle", { instance: instance.name })} <code className="rounded bg-muted px-1 py-0.5 text-[11px]">POST {endpoint}</code>
           </p>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
@@ -207,25 +198,12 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
               <TabsContent key={tb.key} value={tb.key} className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="ti-number">{t("testInteractive.number")}</Label>
-                  <Input
-                    id="ti-number"
-                    placeholder="5511999999999"
-                    value={number}
-                    onChange={(e) => setNumber(e.target.value)}
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    {t("testInteractive.numberHint")}
-                  </p>
+                  <Input id="ti-number" placeholder="5511999999999" value={number} onChange={(e) => setNumber(e.target.value)} />
+                  <p className="text-[11px] text-muted-foreground">{t("testInteractive.numberHint")}</p>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="ti-payload">{t("testInteractive.payload")}</Label>
-                  <Textarea
-                    id="ti-payload"
-                    rows={12}
-                    className="font-mono text-xs"
-                    value={payloads[tb.key]}
-                    onChange={(e) => setPayloads((p) => ({ ...p, [tb.key]: e.target.value }))}
-                  />
+                  <Textarea id="ti-payload" rows={12} className="font-mono text-xs" value={payloads[tb.key]} onChange={(e) => setPayloads((p) => ({ ...p, [tb.key]: e.target.value }))} />
                 </div>
               </TabsContent>
             ))}
