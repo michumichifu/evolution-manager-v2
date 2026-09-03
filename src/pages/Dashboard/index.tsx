@@ -8,12 +8,11 @@ import {
 } from "@evoapi/design-system/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@evoapi/design-system/skeleton";
-import { ChevronsUpDown, Layers, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronsUpDown, Layers, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
-import { BaseHeader } from "@/components/base-header";
 import { InstanceCard } from "@/components/instance-card";
 
 import { useFetchInstances } from "@/lib/queries/instance/fetchInstances";
@@ -32,6 +31,8 @@ function Dashboard() {
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [nameSearch, setNameSearch] = useState("");
   const [searchStatus, setSearchStatus] = useState("all");
+  const [refreshInfoOpen, setRefreshInfoOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { deleteInstance, logout } = useManageInstance();
   const { data: instances, isLoading, refetch } = useFetchInstances();
@@ -91,29 +92,34 @@ function Dashboard() {
 
   return (
     <div className="flex h-full flex-col">
-      <BaseHeader
-        title={t("dashboard.title")}
-        subtitle={t("dashboard.subtitle", { defaultValue: "Gerencie suas instâncias WhatsApp" })}
-        searchValue={nameSearch}
-        onSearchChange={setNameSearch}
-        searchPlaceholder={t("dashboard.search")}
-        primaryAction={{
-          label: t("instance.button.create"),
-          icon: <Plus className="h-4 w-4" />,
-          onClick: () => setCreateOpen(true),
-        }}
-        secondaryActions={[
-          {
-            label: t("button.refresh", { defaultValue: "Atualizar" }),
-            icon: <RefreshCw className="h-4 w-4" />,
-            onClick: resetTable,
-          },
-        ]}
-      >
-        <div className="flex items-center justify-end">
+      {/* Cabecera del Dashboard con distribución personalizada */}
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        {/* Izquierda: Título y Buscador a su derecha */}
+        <div className="flex flex-wrap items-center gap-4 flex-1">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("dashboard.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("dashboard.subtitle", { defaultValue: "Gerencie suas instâncias WhatsApp" })}</p>
+          </div>
+
+          {/* Buscador exactamente a la derecha del título */}
+          <div className="relative w-full sm:w-72 md:w-80">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder={t("dashboard.search")}
+              value={nameSearch}
+              onChange={(e) => setNameSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+        </div>
+
+        {/* Derecha: Botón Estado -> Botón Actualizar -> Botón + Instancia */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botón Estado */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="sm">
+              <Button variant="outline" size="sm" className="h-9 active:scale-95 transition-transform duration-150">
                 {t("dashboard.status")}
                 <ChevronsUpDown className="ml-2 h-4 w-4" />
               </Button>
@@ -132,8 +138,29 @@ function Dashboard() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Botón Actualizar con efecto de hundimiento (active:scale-95) y pop-up informativo */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 active:scale-95 transition-transform duration-150 shadow-sm"
+            onClick={() => setRefreshInfoOpen(true)}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? t("button.refreshing", { defaultValue: "Actualizando..." }) : t("button.refresh", { defaultValue: "Actualizar" })}
+          </Button>
+
+          {/* Botón + Instancia */}
+          <Button
+            size="sm"
+            className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-medium active:scale-95 transition-transform duration-150"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {t("instance.button.create")}
+          </Button>
         </div>
-      </BaseHeader>
+      </div>
 
       <div className="flex-1">
         {isLoading ? (
@@ -205,6 +232,56 @@ function Dashboard() {
               disabled={!confirmValid || deletingName === deleteTarget?.name}
             >
               {deletingName === deleteTarget?.name ? t("button.deleting") : t("button.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Informativo para el Botón Actualizar */}
+      <Dialog open={refreshInfoOpen} onOpenChange={setRefreshInfoOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <RefreshCw className="h-5 w-5 text-emerald-500" />
+              ¿Qué hace el botón Actualizar?
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2 text-sm text-foreground/80 text-left">
+              <p>
+                Al hacer clic en <b>Actualizar</b>, el sistema realiza una sincronización en vivo con <b>Evolution API</b> y <b>Meta Graph API</b> para refrescar:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
+                <li><b>Estado de conexión:</b> Verifica si cada WhatsApp está conectado o desconectado en tiempo real.</li>
+                <li><b>Contadores de actividad:</b> Actualiza los números de mensajes recibidos, enviados y chats activos.</li>
+                <li><b>Datos de perfil y foto oficial:</b> Vuelve a consultar a Meta para cargar los nombres verificados y logos actualizados.</li>
+              </ul>
+              <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground border border-sidebar-border">
+                💡 <b>Operación 100% segura:</b> Esta acción solo actualiza la pantalla. <b>No reinicia el servidor</b>, no corta ninguna llamada ni desconecta a tus clientes ni bots de n8n.
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end pt-2">
+            <Button variant="outline" size="sm" onClick={() => setRefreshInfoOpen(false)}>
+              Cerrar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium active:scale-95 transition-transform duration-150"
+              disabled={isRefreshing}
+              onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                  await resetTable();
+                  toast.success("¡Lista de instancias actualizada correctamente!");
+                  setRefreshInfoOpen(false);
+                } catch (err) {
+                  toast.error("Error al actualizar la lista de instancias");
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Actualizando..." : "Actualizar ahora"}
             </Button>
           </DialogFooter>
         </DialogContent>
