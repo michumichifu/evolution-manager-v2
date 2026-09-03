@@ -19,6 +19,8 @@ export type NewInstance = {
   token?: string | null;
   number?: string | null;
   businessId?: string | null;
+  profileName?: string | null;
+  profilePicUrl?: string | null;
 };
 
 export type Instance = {

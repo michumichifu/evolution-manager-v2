@@ -2,7 +2,7 @@ import { Badge } from "@evoapi/design-system/badge";
 import { Button } from "@evoapi/design-system/button";
 import { Card, CardContent } from "@evoapi/design-system/card";
 import { FlaskConical, Settings, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -27,8 +27,41 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [testOpen, setTestOpen] = useState(false);
+  const [dynProfile, setDynProfile] = useState<{ name?: string; pic?: string } | null>(null);
   const numberFormatter = new Intl.NumberFormat(i18n.language);
-  const displayName = instance.profileName || instance.name;
+
+  // Auto-consultar Meta si es Cloud API y le falta el nombre o la foto
+  useEffect(() => {
+    if (
+      instance.integration === "WHATSAPP-BUSINESS" &&
+      (!instance.profilePicUrl || !instance.profileName) &&
+      instance.number &&
+      instance.token
+    ) {
+      Promise.allSettled([
+        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name`, {
+          headers: { Authorization: `Bearer ${instance.token}` },
+        }).then((r) => (r.ok ? r.json() : null)),
+        fetch(`https://graph.facebook.com/v21.0/${instance.number}/whatsapp_business_profile?fields=profile_picture_url`, {
+          headers: { Authorization: `Bearer ${instance.token}` },
+        }).then((r) => (r.ok ? r.json() : null)),
+      ])
+        .then(([infoRes, picRes]) => {
+          const name = infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.verified_name : undefined;
+          const pic =
+            picRes.status === "fulfilled" && picRes.value?.data?.[0]
+              ? picRes.value.data[0].profile_picture_url
+              : undefined;
+          if (name || pic) {
+            setDynProfile({ name, pic });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [instance.integration, instance.number, instance.token, instance.profilePicUrl, instance.profileName]);
+
+  const displayName = dynProfile?.name || instance.profileName || instance.name;
+  const picUrl = dynProfile?.pic || instance.profilePicUrl;
   const goToInstance = () => navigate(`/manager/instance/${instance.id}/dashboard`);
   const canTest = instance.connectionStatus === "open";
 
@@ -40,11 +73,11 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
           onClick={goToInstance}
           className="flex w-full items-center gap-3 border-b border-sidebar-border p-4 text-left"
         >
-          {instance.profilePicUrl ? (
+          {picUrl ? (
             <div className="flex-shrink-0">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-muted">
                 <img
-                  src={instance.profilePicUrl}
+                  src={picUrl}
                   alt={displayName}
                   className="h-12 w-12 rounded-lg object-cover"
                   onError={(e) => {
@@ -70,12 +103,17 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
         </button>
 
         <div className="space-y-1 px-4 py-3 text-xs text-sidebar-foreground/70">
-          {instance.ownerJid && (
+          {instance.ownerJid ? (
             <div className="flex items-center justify-between">
               <span>{t("dashboard.card.phone", { defaultValue: "Número" })}</span>
               <span className="ml-2 truncate font-mono">{instance.ownerJid.split("@")[0]}</span>
             </div>
-          )}
+          ) : instance.number ? (
+            <div className="flex items-center justify-between">
+              <span>Phone ID</span>
+              <span className="ml-2 truncate font-mono">{instance.number}</span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <span>{t("instance.dashboard.contacts")}</span>
             <span className="font-mono">{numberFormatter.format(instance._count?.Contact || 0)}</span>

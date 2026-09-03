@@ -80,12 +80,44 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
+      let profileName: string | null = null;
+      let profilePicUrl: string | null = null;
+
+      // Auto-consultar Meta Graph API para traer nombre y foto oficial del negocio
+      if (data.integration === "WHATSAPP-BUSINESS" && data.number && data.token) {
+        try {
+          const [infoRes, picRes] = await Promise.allSettled([
+            fetch(`https://graph.facebook.com/v21.0/${data.number}?fields=verified_name`, {
+              headers: { Authorization: `Bearer ${data.token}` },
+            }),
+            fetch(`https://graph.facebook.com/v21.0/${data.number}/whatsapp_business_profile?fields=profile_picture_url`, {
+              headers: { Authorization: `Bearer ${data.token}` },
+            }),
+          ]);
+
+          if (infoRes.status === "fulfilled" && infoRes.value.ok) {
+            const infoData = await infoRes.value.json();
+            if (infoData.verified_name) profileName = infoData.verified_name;
+          }
+          if (picRes.status === "fulfilled" && picRes.value.ok) {
+            const picData = await picRes.value.json();
+            if (picData.data?.[0]?.profile_picture_url) {
+              profilePicUrl = picData.data[0].profile_picture_url;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn("Could not auto-fetch Meta profile info:", fetchErr);
+        }
+      }
+
       const instanceData: NewInstanceType = {
         instanceName: data.name,
         integration: data.integration,
         token: data.token === "" ? null : data.token,
         number: data.number === "" ? null : data.number,
         businessId: data.businessId === "" ? null : data.businessId,
+        profileName,
+        profilePicUrl,
       };
 
       await createInstance(instanceData);
