@@ -71,34 +71,44 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
         <button
           type="button"
           onClick={goToInstance}
-          className="flex w-full items-center gap-3 border-b border-sidebar-border p-4 text-left"
+          className="flex w-full flex-col border-b border-sidebar-border p-4 text-left gap-3"
         >
-          {picUrl ? (
-            <div className="flex-shrink-0">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                <img
-                  src={picUrl}
-                  alt={displayName}
-                  className="h-12 w-12 rounded-lg object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-semibold text-muted-foreground">
-              {displayName.slice(0, 2).toUpperCase()}
-            </div>
-          )}
-
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-semibold text-sidebar-foreground">{displayName}</h3>
-            <p className="truncate text-xs text-sidebar-foreground/60">{instance.name}</p>
+          {/* Encima del logo: Nombre del perfil de WhatsApp a ancho completo */}
+          <div className="w-full">
+            <h3 className="truncate text-base font-semibold text-sidebar-foreground" title={displayName}>
+              {displayName}
+            </h3>
           </div>
 
-          <div className="flex-shrink-0">
-            <StatusBadge status={instance.connectionStatus} />
+          {/* Fila con el Logo a la izquierda, y a su derecha: Etiqueta Conectado/Desconectado y Nombre de la Instancia */}
+          <div className="flex w-full items-center gap-3">
+            {picUrl ? (
+              <div className="flex-shrink-0">
+                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                  <img
+                    src={picUrl}
+                    alt={displayName}
+                    className="h-12 w-12 rounded-lg object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-semibold text-muted-foreground">
+                {displayName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div>
+                <StatusBadge status={instance.connectionStatus} />
+              </div>
+              <p className="truncate text-xs font-medium text-sidebar-foreground/80" title={instance.name}>
+                {instance.name}
+              </p>
+            </div>
           </div>
         </button>
 
