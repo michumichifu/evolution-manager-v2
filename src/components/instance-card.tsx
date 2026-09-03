@@ -126,16 +126,17 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
         </button>
 
         <div className="space-y-1 px-4 py-3 text-xs text-sidebar-foreground/70">
-          {(instance.ownerJid || dynProfile?.displayPhone) && (
+          {(instance.ownerJid || dynProfile?.displayPhone || instance.number) && (
             <div className="flex items-center justify-between">
               <span>{t("dashboard.card.phone", { defaultValue: "Número" })}</span>
               <span className="ml-2 truncate font-mono">
-                {dynProfile?.displayPhone || instance.ownerJid?.split("@")[0]}
+                {dynProfile?.displayPhone || instance.ownerJid?.split("@")[0] || instance.number}
               </span>
             </div>
           )}
 
-          {instance.number && (
+          {/* Phone ID ÚNICAMENTE para instancias oficiales Cloud API */}
+          {instance.integration === "WHATSAPP-BUSINESS" && instance.number && (
             <div className="flex items-center justify-between">
               <span>Phone ID</span>
               <span className="ml-2 truncate font-mono">{instance.number}</span>
