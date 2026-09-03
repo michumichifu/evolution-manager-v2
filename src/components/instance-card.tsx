@@ -66,12 +66,12 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   const canTest = instance.connectionStatus === "open";
 
   return (
-    <Card className="group relative overflow-hidden border-sidebar-border bg-sidebar transition-all duration-300 hover:bg-sidebar-accent/30 hover:shadow-lg hover:shadow-black/10">
+    <Card className="group relative overflow-hidden border-sidebar-border bg-sidebar py-0 gap-0 transition-all duration-300 hover:bg-sidebar-accent/30 hover:shadow-lg hover:shadow-black/10">
       <CardContent className="p-0">
         <button
           type="button"
           onClick={goToInstance}
-          className="flex w-full flex-col border-b border-sidebar-border p-4 text-left gap-3"
+          className="flex w-full flex-col border-b border-sidebar-border p-4 pt-3.5 text-left gap-2.5"
         >
           {/* Encima del logo: Nombre del perfil de WhatsApp a ancho completo */}
           <div className="w-full">
