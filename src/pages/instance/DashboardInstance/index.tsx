@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CircleUser, LogOut, MessageCircle, Power, QrCode, RefreshCw, Send, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "react-toastify";
 import QRCode from "react-qr-code";
 
 import { BaseHeader } from "@/components/base-header";
@@ -46,6 +47,9 @@ function DashboardInstance() {
   const [goQrOpen, setGoQrOpen] = useState(false);
   const [goSendOpen, setGoSendOpen] = useState(false);
   const [logoutConfirmation, setLogoutConfirmation] = useState(false);
+  const [restartConfirmation, setRestartConfirmation] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
   // Ref instead of state: it has to be readable synchronously, before React
   // has had a chance to re-render, or two fast clicks both pass the check.
   const connectInFlight = useRef(false);
@@ -65,15 +69,30 @@ function DashboardInstance() {
   }, [instance]);
 
   const handleReload = async () => {
-    await reloadInstance();
+    setIsReloading(true);
+    try {
+      await reloadInstance();
+      toast.success(t("instance.dashboard.toast.refreshed", { defaultValue: "¡Datos de la instancia actualizados correctamente!" }));
+    } catch (error) {
+      console.error("Error reload:", error);
+      toast.error("Error al actualizar los datos de la instancia");
+    } finally {
+      setIsReloading(false);
+    }
   };
 
   const handleRestart = async (instanceName: string) => {
+    setIsRestarting(true);
     try {
       await restart(instanceName);
       await reloadInstance();
-    } catch (error) {
-      console.error("Error:", error);
+      toast.success(t("instance.dashboard.toast.restarted", { defaultValue: `¡Instancia "${instanceName}" reiniciada con éxito!` }));
+      setRestartConfirmation(false);
+    } catch (error: any) {
+      console.error("Error restart:", error);
+      toast.error(error?.message || "Error al reiniciar la instancia");
+    } finally {
+      setIsRestarting(false);
     }
   };
 
@@ -162,14 +181,14 @@ function DashboardInstance() {
         subtitle={instance.profileName || t("instance.dashboard.subtitle", { defaultValue: "Gerencie sua instância" })}
         secondaryActions={[
           {
-            label: t("button.refresh", { defaultValue: "Atualizar" }),
-            icon: <RefreshCw className="h-4 w-4" />,
+            label: isReloading ? t("button.refreshing", { defaultValue: "Actualizando..." }) : t("button.refresh", { defaultValue: "Actualizar" }),
+            icon: <RefreshCw className={`h-4 w-4 ${isReloading ? "animate-spin" : ""}`} />,
             onClick: handleReload,
           },
           {
-            label: t("instance.dashboard.button.restart", { defaultValue: "Reiniciar" }),
+            label: isRestarting ? t("button.restarting", { defaultValue: "Reiniciando..." }) : t("instance.dashboard.button.restart", { defaultValue: "Reiniciar" }),
             icon: <Power className="h-4 w-4" />,
-            onClick: () => handleRestart(instance.name),
+            onClick: () => setRestartConfirmation(true),
           },
           ...(connected
             ? [
@@ -330,6 +349,39 @@ function DashboardInstance() {
                 }}
                 variant="destructive">
                 {t("instance.dashboard.button.disconnect")}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setRestartConfirmation} open={restartConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("instance.dashboard.restartConfirm.title", {
+                defaultValue: `¿Reiniciar la instancia "${instance.name}"?`,
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("instance.dashboard.restartConfirm.description", {
+                defaultValue:
+                  "Esta acción reiniciará los servicios internos de esta instancia específica en el servidor. La conexión se restablecerá automáticamente en pocos segundos. Las demás instancias del servidor no se verán afectadas.",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <div className="flex items-center gap-4">
+              <Button onClick={() => setRestartConfirmation(false)} size="sm" variant="outline" disabled={isRestarting}>
+                {t("button.cancel", { defaultValue: "Cancelar" })}
+              </Button>
+              <Button
+                onClick={() => handleRestart(instance.name)}
+                disabled={isRestarting}
+                variant="default">
+                {isRestarting
+                  ? t("button.restarting", { defaultValue: "Reiniciando..." })
+                  : t("instance.dashboard.button.restart", { defaultValue: "Reiniciar instancia" })}
               </Button>
             </div>
           </DialogFooter>
