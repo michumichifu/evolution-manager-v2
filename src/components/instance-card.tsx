@@ -18,6 +18,36 @@ const StatusBadge = ({ status }: { status?: string }) => {
   return <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20">{t("status.closed")}</Badge>;
 };
 
+const IntegrationBadge = ({ integration }: { integration?: string }) => {
+  const norm = (integration || "").toUpperCase();
+  if (norm === "WHATSAPP-BUSINESS") {
+    return (
+      <Badge variant="outline" className="bg-sky-500/10 text-sky-400 border-sky-500/30 text-[11px] font-medium hover:bg-sky-500/20">
+        Cloud API
+      </Badge>
+    );
+  }
+  if (norm === "WHATSAPP-BAILEYS") {
+    return (
+      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[11px] font-medium hover:bg-amber-500/20">
+        Baileys
+      </Badge>
+    );
+  }
+  if (norm === "EVOLUTION" || norm === "EVOLUTION_GO") {
+    return (
+      <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30 text-[11px] font-medium hover:bg-purple-500/20">
+        Evolution
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-muted text-muted-foreground text-[11px] font-medium">
+      {integration || "WhatsApp"}
+    </Badge>
+  );
+};
+
 interface InstanceCardProps {
   instance: Instance;
   isDeleting?: boolean;
@@ -103,8 +133,9 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
             )}
 
             <div className="min-w-0 flex-1 space-y-1.5">
-              <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <StatusBadge status={instance.connectionStatus} />
+                <IntegrationBadge integration={instance.integration} />
               </div>
               <p className="truncate text-xs font-medium text-sidebar-foreground/80" title={instance.name}>
                 {instance.name}
