@@ -11,8 +11,10 @@ import { toast } from "react-toastify";
 import { z } from "zod";
 
 import { Button } from "@evoapi/design-system/button";
+import { Copy } from "lucide-react";
 import { Form, FormInput, FormSwitch, FormTags } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { copyToClipboard } from "@/utils/copy-to-clipboard";
 
 import { IntegrationGuard } from "@/components/integration-disabled";
 import { useInstance } from "@/contexts/InstanceContext";
@@ -164,6 +166,35 @@ function Chatwoot() {
           <div>
             <h3 className="mb-1 text-lg font-medium">{t("chatwoot.title")}</h3>
             <Separator className="my-4" />
+
+            <div className="mx-4 mb-4 rounded-lg border border-primary/30 bg-primary/10 p-3.5 space-y-1.5">
+              <span className="text-xs font-semibold text-foreground">
+                URL de Webhook requerida en Chatwoot:
+              </span>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={`${window.location.origin}/chatwoot/webhook/${encodeURIComponent(instance?.name || "")}`}
+                  className="font-mono text-xs bg-background select-all"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0"
+                  onClick={() => {
+                    copyToClipboard(`${window.location.origin}/chatwoot/webhook/${encodeURIComponent(instance?.name || "")}`);
+                  }}
+                >
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  Copiar URL
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                📌 Pega esta URL en tu Chatwoot (en <b>Ajustes &gt; Bandejas de entrada &gt; Tu bandeja &gt; Ajustes &gt; URL de Webhook</b>) para que las respuestas salgan a WhatsApp.
+              </p>
+            </div>
+
             <div className="mx-4 space-y-2 divide-y [&>*]:px-4 [&>*]:py-2">
               <FormSwitch name="enabled" label={t("chatwoot.form.enabled.label")} className="w-full justify-between" helper={t("chatwoot.form.enabled.description")} />
               <FormInput name="url" label={t("chatwoot.form.url.label")}>

@@ -232,8 +232,21 @@ function DashboardInstance() {
             </div>
           </CardHeader>
           <CardContent className="flex flex-col items-start space-y-4">
-            <div className="w-full">
-              <InstanceToken token={instance.token} />
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Token de la Instancia
+                </p>
+                <InstanceToken token={instance.token} />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Webhook para Chatwoot
+                </p>
+                <InstanceToken
+                  token={`${window.location.origin}/chatwoot/webhook/${encodeURIComponent(instance.name)}`}
+                />
+              </div>
             </div>
 
             {!connected && (
