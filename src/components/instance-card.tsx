@@ -36,19 +36,18 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [testOpen, setTestOpen] = useState(false);
-  const [dynProfile, setDynProfile] = useState<{ name?: string; pic?: string } | null>(null);
+  const [dynProfile, setDynProfile] = useState<{ name?: string; pic?: string; displayPhone?: string } | null>(null);
   const numberFormatter = new Intl.NumberFormat(i18n.language);
 
-  // Auto-consultar Meta si es Cloud API y le falta el nombre o la foto
+  // Auto-consultar Meta si es Cloud API para nombre, foto y número real de teléfono
   useEffect(() => {
     if (
       instance.integration === "WHATSAPP-BUSINESS" &&
-      (!instance.profilePicUrl || !instance.profileName) &&
       instance.number &&
       instance.token
     ) {
       Promise.allSettled([
-        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name`, {
+        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number`, {
           headers: { Authorization: `Bearer ${instance.token}` },
         }).then((r) => (r.ok ? r.json() : null)),
         fetch(`https://graph.facebook.com/v21.0/${instance.number}/whatsapp_business_profile?fields=profile_picture_url`, {
@@ -57,17 +56,19 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
       ])
         .then(([infoRes, picRes]) => {
           const name = infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.verified_name : undefined;
+          const displayPhone =
+            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.display_phone_number : undefined;
           const pic =
             picRes.status === "fulfilled" && picRes.value?.data?.[0]
               ? picRes.value.data[0].profile_picture_url
               : undefined;
-          if (name || pic) {
-            setDynProfile({ name, pic });
+          if (name || pic || displayPhone) {
+            setDynProfile({ name, pic, displayPhone });
           }
         })
         .catch(() => {});
     }
-  }, [instance.integration, instance.number, instance.token, instance.profilePicUrl, instance.profileName]);
+  }, [instance.integration, instance.number, instance.token]);
 
   const displayName = dynProfile?.name || instance.profileName || instance.name;
   const picUrl = dynProfile?.pic || instance.profilePicUrl;
@@ -125,15 +126,12 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
         </button>
 
         <div className="space-y-1 px-4 py-3 text-xs text-sidebar-foreground/70">
-          {instance.ownerJid ? (
+          {instance.ownerJid || dynProfile?.displayPhone ? (
             <div className="flex items-center justify-between">
               <span>{t("dashboard.card.phone", { defaultValue: "Número" })}</span>
-              <span className="ml-2 truncate font-mono">{instance.ownerJid.split("@")[0]}</span>
-            </div>
-          ) : instance.number ? (
-            <div className="flex items-center justify-between">
-              <span>Phone ID</span>
-              <span className="ml-2 truncate font-mono">{instance.number}</span>
+              <span className="ml-2 truncate font-mono">
+                {dynProfile?.displayPhone || instance.ownerJid?.split("@")[0]}
+              </span>
             </div>
           ) : null}
           <div className="flex items-center justify-between">

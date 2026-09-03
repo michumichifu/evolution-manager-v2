@@ -181,7 +181,7 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
             >
               <Input
                 type={isCloudApi ? "text" : "tel"}
-                placeholder={isCloudApi ? "Ej: 111332491590444 (15 dígitos, NO el número telefónico)" : ""}
+                placeholder={isCloudApi ? "Ej: 105829104928104 (15 dígitos, NO el número telefónico)" : ""}
               />
             </FormInput>
             {isCloudApi && (
@@ -193,7 +193,7 @@ function NewInstance({ resetTable, open, onOpenChange }: { resetTable: () => voi
             {isCloudApi && (
               <>
                 <FormInput required name="businessId" label="WABA ID (ID de la cuenta de WhatsApp)">
-                  <Input placeholder="Ej: 100118229397347 (Identificador de la cuenta de WhatsApp)" />
+                  <Input placeholder="Ej: 109283746501928 (Identificador de la cuenta de WhatsApp)" />
                 </FormInput>
                 <p className="-mt-2 text-xs text-muted-foreground">
                   📌 En Meta Business Suite &gt; Cuentas de WhatsApp &gt; Identificador (debajo del nombre de la empresa).
