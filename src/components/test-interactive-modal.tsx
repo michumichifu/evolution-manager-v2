@@ -175,49 +175,87 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
 
   return (
     <Dialog open={open} onOpenChange={(o) => !sending && onOpenChange(o)}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{t("testInteractive.title")}</DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-6 overflow-hidden">
+        {/* Cabecera fija */}
+        <DialogHeader className="shrink-0 space-y-1">
+          <DialogTitle className="text-xl font-bold">{t("testInteractive.title")}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            {t("testInteractive.subtitle", { instance: instance.name })}{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+              POST {endpoint}
+            </code>
+          </p>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            {t("testInteractive.subtitle", { instance: instance.name })} <code className="rounded bg-muted px-1 py-0.5 text-[11px]">POST {endpoint}</code>
-          </p>
-
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-            <TabsList className="grid w-full grid-cols-5">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="flex flex-1 flex-col overflow-hidden min-h-0">
+          <div className="shrink-0 pt-1 pb-2">
+            <TabsList className="grid w-full grid-cols-5 h-auto p-1 gap-1">
               {tabs.map((tb) => (
-                <TabsTrigger key={tb.key} value={tb.key}>
+                <TabsTrigger key={tb.key} value={tb.key} className="text-xs py-1.5 px-2">
                   {tb.label}
                 </TabsTrigger>
               ))}
             </TabsList>
+          </div>
 
+          {/* Cuerpo con scroll interno independiente para evitar cualquier desbordamiento de pantalla */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-0">
             {tabs.map((tb) => (
-              <TabsContent key={tb.key} value={tb.key} className="space-y-3">
+              <TabsContent key={tb.key} value={tb.key} className="m-0 space-y-3">
                 <div className="space-y-1">
-                  <Label htmlFor="ti-number">{t("testInteractive.number")}</Label>
-                  <Input id="ti-number" placeholder="5511999999999" value={number} onChange={(e) => setNumber(e.target.value)} />
+                  <Label htmlFor={`ti-number-${tb.key}`}>{t("testInteractive.number")}</Label>
+                  <Input
+                    id={`ti-number-${tb.key}`}
+                    placeholder="Ej: 584245441315"
+                    value={number}
+                    onChange={(e) => setNumber(e.target.value)}
+                    className="h-9"
+                  />
                   <p className="text-[11px] text-muted-foreground">{t("testInteractive.numberHint")}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="ti-payload">{t("testInteractive.payload")}</Label>
-                  <Textarea id="ti-payload" rows={12} className="font-mono text-xs" value={payloads[tb.key]} onChange={(e) => setPayloads((p) => ({ ...p, [tb.key]: e.target.value }))} />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`ti-payload-${tb.key}`}>{t("testInteractive.payload")}</Label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPayloads((p) => ({
+                          ...p,
+                          [tb.key]: JSON.stringify(TEMPLATES[tb.key], null, 2),
+                        }))
+                      }
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline transition-colors"
+                    >
+                      Restablecer plantilla
+                    </button>
+                  </div>
+                  <Textarea
+                    id={`ti-payload-${tb.key}`}
+                    rows={8}
+                    className="h-44 sm:h-52 font-mono text-xs resize-y"
+                    value={payloads[tb.key]}
+                    onChange={(e) => setPayloads((p) => ({ ...p, [tb.key]: e.target.value }))}
+                  />
                 </div>
               </TabsContent>
             ))}
-          </Tabs>
+          </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
+          {/* Pie de modal fijo con botones de acción siempre visibles */}
+          <div className="shrink-0 flex items-center justify-end gap-2 border-t border-sidebar-border pt-3 mt-3">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={sending}>
               {t("button.cancel")}
             </Button>
-            <Button onClick={send} disabled={sending}>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium active:scale-95 transition-transform duration-150"
+              onClick={send}
+              disabled={sending}
+            >
               {sending ? t("testInteractive.sending") : t("testInteractive.send")}
             </Button>
           </div>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

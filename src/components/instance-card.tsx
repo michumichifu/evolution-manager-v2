@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { TestInteractiveModal } from "@/components/test-interactive-modal";
+import { TooltipWrapper } from "@/components/ui/tooltip";
 
 import { Instance } from "@/types/evolution.types";
 
@@ -144,24 +145,33 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
             {t("dashboard.settings")}
           </Button>
           <div className="w-px bg-sidebar-border" />
-          <Button
-            variant="ghost"
-            className="h-12 rounded-none px-4 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-            disabled={!canTest}
-            title={canTest ? t("testInteractive.title") : t("testInteractive.requiresOpen")}
-            onClick={() => setTestOpen(true)}
+          <TooltipWrapper
+            content={
+              canTest
+                ? t("testInteractive.title", { defaultValue: "Probar mensajes interactivos" })
+                : t("testInteractive.requiresOpen", { defaultValue: "Requiere instancia conectada" })
+            }
           >
-            <FlaskConical className="h-4 w-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              className="h-12 rounded-none px-4 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+              disabled={!canTest}
+              onClick={() => setTestOpen(true)}
+            >
+              <FlaskConical className="h-4 w-4" />
+            </Button>
+          </TooltipWrapper>
           <div className="w-px bg-sidebar-border" />
-          <Button
-            variant="ghost"
-            className="h-12 rounded-none px-4 text-red-500 hover:bg-red-500/10 hover:text-red-400"
-            disabled={isDeleting}
-            onClick={() => onDelete(instance)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <TooltipWrapper content={t("button.delete", { defaultValue: "Eliminar instancia" })}>
+            <Button
+              variant="ghost"
+              className="h-12 rounded-none px-4 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+              disabled={isDeleting}
+              onClick={() => onDelete(instance)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </TooltipWrapper>
         </div>
       </CardContent>
 
