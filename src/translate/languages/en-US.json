@@ -1706,5 +1706,18 @@
   "table": {
     "loading": "Loading...",
     "noResults": "No results found!"
+  },
+  "restorable": {
+    "title": "{{count}} session can be restored without a QR code",
+    "title_plural": "{{count}} sessions can be restored without a QR code",
+    "description": "These instances lost their credentials to a network outage, not because anyone logged out. They can be restored from the backup and will reconnect on their own, with nothing to scan.",
+    "fellAt": "went down",
+    "backupFrom": "backup from",
+    "button": "Restore {{count}} session",
+    "button_plural": "Restore {{count}} sessions",
+    "done": "{{count}} session restored, no QR code needed",
+    "done_plural": "{{count}} sessions restored, no QR code needed",
+    "failed": "Could not restore: {{names}}. These need to be paired again by scanning.",
+    "error": "Could not reach the server to restore the sessions"
   }
 }

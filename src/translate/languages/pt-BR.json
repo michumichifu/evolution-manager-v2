@@ -1688,5 +1688,18 @@
   "table": {
     "loading": "Carregando...",
     "noResults": "Nenhum resultado encontrado!"
+  },
+  "restorable": {
+    "title": "{{count}} sessão pode ser recuperada sem QR Code",
+    "title_plural": "{{count}} sessões podem ser recuperadas sem QR Code",
+    "description": "Estas instâncias perderam suas credenciais por uma queda de rede, não porque alguém desconectou. Dá para restaurá-las do backup e elas reconectam sozinhas, sem escanear nada.",
+    "fellAt": "caiu em",
+    "backupFrom": "backup de",
+    "button": "Restaurar {{count}} sessão",
+    "button_plural": "Restaurar {{count}} sessões",
+    "done": "{{count}} sessão restaurada, sem QR Code",
+    "done_plural": "{{count}} sessões restauradas, sem QR Code",
+    "failed": "Não foi possível restaurar: {{names}}. É preciso vincular de novo escaneando.",
+    "error": "Não foi possível falar com o servidor para restaurar as sessões"
   }
 }

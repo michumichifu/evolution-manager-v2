@@ -1687,5 +1687,18 @@
   "table": {
     "loading": "Chargement...",
     "noResults": "Aucun résultat trouvé !"
+  },
+  "restorable": {
+    "title": "{{count}} session peut être restaurée sans QR code",
+    "title_plural": "{{count}} sessions peuvent être restaurées sans QR code",
+    "description": "Ces instances ont perdu leurs identifiants à cause d'une coupure réseau, pas parce que quelqu'un s'est déconnecté. On peut les restaurer depuis la sauvegarde et elles se reconnecteront seules, sans rien scanner.",
+    "fellAt": "tombée le",
+    "backupFrom": "sauvegarde du",
+    "button": "Restaurer {{count}} session",
+    "button_plural": "Restaurer {{count}} sessions",
+    "done": "{{count}} session restaurée, sans QR code",
+    "done_plural": "{{count}} sessions restaurées, sans QR code",
+    "failed": "Impossible de restaurer : {{names}}. Il faut les réassocier en scannant.",
+    "error": "Impossible de joindre le serveur pour restaurer les sessions"
   }
 }

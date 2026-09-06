@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 
 import { InstanceCard } from "@/components/instance-card";
+import { RestorableSessions } from "@/components/restorable-sessions";
 
 import { useFetchInstances } from "@/lib/queries/instance/fetchInstances";
 import { useManageInstance } from "@/lib/queries/instance/manageInstance";
@@ -161,6 +162,10 @@ function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* PD 2026-09-06: solo se pinta si hay algo que restaurar. Va antes del listado
+          porque una credencial perdida manda sobre cualquier otra cosa de la pantalla. */}
+      <RestorableSessions onRestored={resetTable} />
 
       <div className="flex-1">
         {isLoading ? (

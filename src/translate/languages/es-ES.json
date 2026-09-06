@@ -1688,5 +1688,18 @@
   "table": {
     "loading": "Cargando...",
     "noResults": "¡Ningún resultado encontrado!"
+  },
+  "restorable": {
+    "title": "Hay {{count}} sesión que se puede recuperar sin código QR",
+    "title_plural": "Hay {{count}} sesiones que se pueden recuperar sin código QR",
+    "description": "Estas instancias perdieron su credencial por un corte de red, no porque nadie cerrara sesión. Se pueden devolver desde el respaldo y volverán a conectarse solas, sin escanear nada.",
+    "fellAt": "cayó el",
+    "backupFrom": "respaldo del",
+    "button": "Restaurar {{count}} sesión",
+    "button_plural": "Restaurar {{count}} sesiones",
+    "done": "{{count}} sesión restaurada, sin código QR",
+    "done_plural": "{{count}} sesiones restauradas, sin código QR",
+    "failed": "No se pudo restaurar: {{names}}. Hay que revincular escaneando el código.",
+    "error": "No se pudo hablar con el servidor para restaurar las sesiones"
   }
 }
