@@ -37,6 +37,7 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   const navigate = useNavigate();
   const [testOpen, setTestOpen] = useState(false);
   const [dynProfile, setDynProfile] = useState<{ name?: string; pic?: string; displayPhone?: string } | null>(null);
+  const [fotosRotas, setFotosRotas] = useState<string[]>([]);
   const numberFormatter = new Intl.NumberFormat(i18n.language);
 
   // Auto-consultar Meta si es Cloud API para nombre, foto y número real de teléfono
@@ -46,12 +47,19 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
       instance.number &&
       instance.token
     ) {
+      // PD 2026-09-06: `cache: "no-store"` a propósito. Las URLs de foto que devuelve Meta
+      // llevan su caducidad DENTRO de la propia dirección (el parámetro `oe=`), así que
+      // una respuesta servida desde la caché del navegador trae una dirección MUERTA: la
+      // imagen contesta 403 y la tarjeta se queda en blanco. Pasó ese día a las 15:33 RD,
+      // la hora exacta en que caducaba la que el navegador tenía guardada.
       Promise.allSettled([
         fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number`, {
           headers: { Authorization: `Bearer ${instance.token}` },
+          cache: "no-store",
         }).then((r) => (r.ok ? r.json() : null)),
         fetch(`https://graph.facebook.com/v21.0/${instance.number}/whatsapp_business_profile?fields=profile_picture_url`, {
           headers: { Authorization: `Bearer ${instance.token}` },
+          cache: "no-store",
         }).then((r) => (r.ok ? r.json() : null)),
       ])
         .then(([infoRes, picRes]) => {
@@ -71,7 +79,13 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   }, [instance.integration, instance.number, instance.token]);
 
   const displayName = dynProfile?.name || instance.profileName || instance.name;
-  const picUrl = dynProfile?.pic || instance.profilePicUrl;
+
+  // PD 2026-09-06: la foto tiene DOS candidatas —la que da Meta y la que Evolution guardó
+  // al conectar— y las dos caducan por su cuenta. Antes se cogía la de Meta y, si fallaba,
+  // el `onError` escondía la imagen: quedaba un recuadro gris teniendo al lado una foto
+  // buena. Ahora se prueba la siguiente, y solo cuando fallan todas salen las iniciales.
+  const candidatasFoto = [dynProfile?.pic, instance.profilePicUrl].filter(Boolean) as string[];
+  const picUrl = candidatasFoto.find((u) => !fotosRotas.includes(u));
   const goToInstance = () => navigate(`/manager/instance/${instance.id}/dashboard`);
   const canTest = instance.connectionStatus === "open";
 
@@ -99,8 +113,9 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
                     src={picUrl}
                     alt={displayName}
                     className="h-12 w-12 rounded-lg object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
+                    onError={() => {
+                      // Se apunta la que falló y se reintenta con la siguiente candidata.
+                      setFotosRotas((antes) => (antes.includes(picUrl) ? antes : [...antes, picUrl]));
                     }}
                   />
                 </div>
