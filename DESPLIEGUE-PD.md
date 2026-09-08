@@ -164,3 +164,32 @@ Al tocar un botón llega **`templateButtonReplyMessage`** con `selectedDisplayTe
 ventana de 24 horas, está en la carpeta de la agencia:**
 `Documentacion/INCIDENCIA - Los mensajes fuera de la ventana de 24 h no salen y Evolution los da por enviados (8 sep 2026).md`
 (apartados 10 a 12.2).
+
+## 7. El PIX fuera del probador, y dos ejemplos de cobro que sí sirven aquí (8 sep 2026)
+
+El modal «Probar mensajes interactivos» (`src/components/test-interactive-modal.tsx`) traía una
+pestaña **PIX** copiada del ejemplo de upstream. Luis: *«en LATAM no se usa PIX ni se conoce… vamos a
+agregar dos plantillas de ejemplo allí, una de Binance Pay y otra de Pago Móvil»*.
+
+🔴 **El PIX no se podía adaptar, y por eso se quitó en vez de renombrarse:** es **WhatsApp Pay
+Brasil**, la tarjeta la dibuja el teléfono, sus llaves son brasileñas (`cpf`, `cnpj`, EVP…) y **no
+admite logo** — el bloque del PIX en `buttonMessage()` de Evolution hace `return` antes de la sección
+del encabezado. Un cobro aquí se arma con **`copy` + `url` y su `thumbnailUrl`**, que es lo que hacen
+las dos pestañas nuevas.
+
+**El logo vive en el propio Manager**, no en un enlace de fuera:
+
+```
+public/assets/images/pagos/binance-pay.png
+  → https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png
+```
+
+🔴 **Tiene que ser una URL pública**, porque quien la descarga es **el servidor de Evolution**, no el
+navegador: un archivo local o una ruta relativa no valen. Alojarlo aquí es lo que garantiza que el
+ejemplo siga vivo — y da el molde para el logo de cualquier banco.
+
+⚠️ **La pestaña de Pago Móvil va sin `thumbnailUrl` todavía**, a la espera de su logo. **Se pone
+cuando exista el archivo, no antes**: un `thumbnailUrl` que da 404 hace fallar el envío entero.
+
+🔴 **Al añadir una pestaña hay que tocar los CUATRO idiomas** (`src/translate/languages/*.json`,
+clave `testInteractive.tabs`). Una clave que falta no rompe nada: pinta el identificador crudo.

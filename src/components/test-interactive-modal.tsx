@@ -14,15 +14,21 @@ import { api } from "@/lib/queries/api";
 
 import { Instance } from "@/types/evolution.types";
 
-type TabKey = "reply" | "cta" | "pix" | "list" | "carousel";
+type TabKey = "reply" | "cta" | "binance" | "pagoMovil" | "list" | "carousel";
 
 const ENDPOINT: Record<TabKey, string> = {
   reply: "sendButtons",
   cta: "sendButtons",
-  pix: "sendButtons",
+  binance: "sendButtons",
+  pagoMovil: "sendButtons",
   list: "sendList",
   carousel: "sendCarousel",
 };
+
+// PD: el logo viaja en el propio Manager, así que la URL es fija y siempre está viva. Sirve de
+// ejemplo de cómo se pone el de cualquier banco o billetera: una URL pública que el servidor de
+// Evolution pueda descargar.
+const LOGO_BINANCE = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png";
 
 const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
   reply: {
@@ -48,18 +54,27 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
       },
     ],
   },
-  pix: {
-    title: "Pago con PIX",
-    description: "Toca para pagar con PIX (payment_info)",
-    footer: "WhatsApp Pay",
+  // 🔴 Aquí había un ejemplo de PIX y se quitó: el PIX es de WhatsApp Pay BRASIL, la tarjeta la
+  // dibuja el teléfono, sus llaves son brasileñas y ni siquiera admite logo. Fuera de Brasil un
+  // cobro se arma con `copy` + `url` y su imagen de cabecera, que es lo que hay debajo.
+  binance: {
+    title: "Pago con Binance Pay",
+    description:
+      "1. Abre Binance → Pay → Enviar\n2. Pega el Pay ID\n3. Envía el monto en USDT y manda el comprobante por aquí",
+    footer: "Red: USDT (TRC20)",
+    thumbnailUrl: LOGO_BINANCE,
     buttons: [
-      {
-        type: "pix",
-        currency: "BRL",
-        name: "Empresa de Ejemplo",
-        keyType: "random",
-        key: "abc12345-6789-0000-aaaa-bbbbccccdddd",
-      },
+      { type: "copy", displayText: "📋 Copiar Pay ID", copyCode: "123456789" },
+      { type: "url", displayText: "🌐 Abrir Binance Pay", url: "https://www.binance.com/es/pay" },
+    ],
+  },
+  pagoMovil: {
+    title: "Pago Móvil",
+    description: "Banco 0134\nCédula V-12.345.678\nTeléfono 0414-1234567",
+    footer: "Envía el comprobante por aquí",
+    buttons: [
+      { type: "copy", displayText: "📋 Copiar cédula", copyCode: "V-12345678" },
+      { type: "copy", displayText: "📋 Copiar teléfono", copyCode: "04141234567" },
     ],
   },
   list: {
@@ -119,7 +134,8 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
   const [payloads, setPayloads] = useState<Record<TabKey, string>>(() => ({
     reply: JSON.stringify(TEMPLATES.reply, null, 2),
     cta: JSON.stringify(TEMPLATES.cta, null, 2),
-    pix: JSON.stringify(TEMPLATES.pix, null, 2),
+    binance: JSON.stringify(TEMPLATES.binance, null, 2),
+    pagoMovil: JSON.stringify(TEMPLATES.pagoMovil, null, 2),
     list: JSON.stringify(TEMPLATES.list, null, 2),
     carousel: JSON.stringify(TEMPLATES.carousel, null, 2),
   }));
@@ -168,7 +184,8 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
   const tabs: { key: TabKey; label: string }[] = [
     { key: "reply", label: t("testInteractive.tabs.reply") },
     { key: "cta", label: t("testInteractive.tabs.cta") },
-    { key: "pix", label: t("testInteractive.tabs.pix") },
+    { key: "binance", label: t("testInteractive.tabs.binance") },
+    { key: "pagoMovil", label: t("testInteractive.tabs.pagoMovil") },
     { key: "list", label: t("testInteractive.tabs.list") },
     { key: "carousel", label: t("testInteractive.tabs.carousel") },
   ];

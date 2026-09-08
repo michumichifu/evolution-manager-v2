@@ -34,7 +34,8 @@
     "tabs": {
       "reply": "Reply",
       "cta": "CTA",
-      "pix": "PIX",
+      "binance": "Binance Pay",
+      "pagoMovil": "Mobile Payment",
       "list": "List",
       "carousel": "Carousel"
     },
