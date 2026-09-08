@@ -32,6 +32,24 @@ interface InstanceCardProps {
   onDelete: (instance: Instance) => void;
 }
 
+// PD 2026-09-08: las URLs de pps.whatsapp.net llevan su propia caducidad en el parámetro
+// `oe` (epoch en hexadecimal). Pedir una vencida devuelve 403 y ensucia la consola sin
+// remedio, así que se descarta ANTES de intentarla. Pasó con «PD Cloud»: su URL llevaba
+// caducada día y medio —las instancias por QR refrescan la suya al reconectar, las de Cloud
+// API no— y solo se sustituía DESPUÉS de fallar, porque la candidata de Meta llega por fetch
+// y en el primer render todavía no está. Ante la duda se intenta: sin `oe`, o si no se puede
+// leer, la URL se da por buena.
+const fotoVigente = (url: string): boolean => {
+  try {
+    const oe = new URL(url).searchParams.get("oe");
+    if (!oe) return true;
+    const vence = parseInt(oe, 16);
+    return Number.isNaN(vence) || vence * 1000 > Date.now();
+  } catch {
+    return true;
+  }
+};
+
 export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -84,7 +102,7 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   // al conectar— y las dos caducan por su cuenta. Antes se cogía la de Meta y, si fallaba,
   // el `onError` escondía la imagen: quedaba un recuadro gris teniendo al lado una foto
   // buena. Ahora se prueba la siguiente, y solo cuando fallan todas salen las iniciales.
-  const candidatasFoto = [dynProfile?.pic, instance.profilePicUrl].filter(Boolean) as string[];
+  const candidatasFoto = ([dynProfile?.pic, instance.profilePicUrl].filter(Boolean) as string[]).filter(fotoVigente);
   const picUrl = candidatasFoto.find((u) => !fotosRotas.includes(u));
   const goToInstance = () => navigate(`/manager/instance/${instance.id}/dashboard`);
   const canTest = instance.connectionStatus === "open";
