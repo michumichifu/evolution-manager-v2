@@ -21,6 +21,7 @@ import { connectSocket, disconnectSocket } from "@/services/websocket/socket";
 // Import components from EmbedChatMessage for attachment functionality
 import { MediaOptions } from "../EmbedChatMessage/InputMessage/media-options";
 import { SelectedMedia } from "../EmbedChatMessage/InputMessage/selected-media";
+import { fotoSiVigente } from "@/lib/foto-perfil";
 
 type MessagesProps = {
   textareaRef: RefObject<HTMLTextAreaElement>;
@@ -296,17 +297,26 @@ const MessageContent = ({ message }: { message: Message }) => {
       // Sin `return` aquí el componente devolvería undefined y React reventaría: no vale `break`.
       if (!nodo) return <span className="text-xs text-muted-foreground">Mensaje interactivo sin contenido</span>;
 
+      const botones = nodo.nativeFlowMessage?.buttons ?? [];
+
+      // PD: dentro de la burbuja se HEREDA el color (`text-current`, `border-current`). Con
+      // `bg-muted`/`text-muted-foreground` los botones salían negros sobre el verde del saliente.
       return (
-        <div className="flex flex-col gap-2">
-          {(nodo.header?.title || nodo.header?.text) && <p className="font-medium">{nodo.header?.title ?? nodo.header?.text}</p>}
-          {nodo.body?.text && <p className="whitespace-pre-wrap text-sm">{nodo.body.text}</p>}
-          {nodo.footer?.text && <p className="text-xs text-muted-foreground">{nodo.footer.text}</p>}
-          {nodo.nativeFlowMessage?.buttons?.length > 0 && (
-            <div className="flex flex-col gap-1 border-t border-current/20 pt-2">
-              {nodo.nativeFlowMessage.buttons.map((boton: any, i: number) => (
-                <span key={i} className="rounded bg-muted px-2 py-1 text-center text-xs">
+        <div className="flex flex-col gap-1.5">
+          {(nodo.header?.title || nodo.header?.text) && <p className="font-semibold">{nodo.header?.title ?? nodo.header?.text}</p>}
+          {nodo.body?.text && <p className="whitespace-pre-wrap">{conNegritas(nodo.body.text)}</p>}
+          {nodo.footer?.text && <p className="text-xs opacity-70">{nodo.footer.text}</p>}
+          {botones.length > 0 && (
+            // Los márgenes negativos compensan el padding de la burbuja, para que las líneas
+            // separadoras lleguen de borde a borde, como en WhatsApp.
+            <div className="-mx-3 -mb-2 mt-1">
+              {botones.map((boton: any, i: number) => (
+                <div key={i} className="flex items-center justify-center gap-1.5 border-t border-current/20 px-3 py-2 font-medium">
+                  <span aria-hidden className="opacity-70">
+                    ↩
+                  </span>
                   {etiquetaDeBoton(boton)}
-                </span>
+                </div>
               ))}
             </div>
           )}
@@ -327,8 +337,10 @@ const MessageContent = ({ message }: { message: Message }) => {
       if (!respuesta) return <span className="text-xs text-muted-foreground">Respuesta sin texto</span>;
 
       return (
-        <span className="inline-flex items-center gap-1">
-          <span aria-hidden>▶️</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="opacity-70">
+            ↩
+          </span>
           {respuesta}
         </span>
       );
@@ -668,7 +680,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
       <div className="flex-shrink-0 border-b bg-background/95 p-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={chat?.profilePicUrl} alt={headerName} />
+            <AvatarImage src={fotoSiVigente(chat?.profilePicUrl)} alt={headerName} />
             <AvatarFallback className="bg-muted text-muted-foreground">
               <User className="h-5 w-5" />
             </AvatarFallback>
@@ -757,4 +769,15 @@ function respuestaDeFlujoNativo(interactiveResponseMessage: any): string | undef
   }
 
   return respuesta?.name ?? interactiveResponseMessage?.body?.text;
+}
+
+/** PD: WhatsApp escribe la negrita con *asteriscos*; aquí se pinta de verdad. */
+function conNegritas(texto: string) {
+  return texto.split(/(\*[^*\n]+\*)/g).map((trozo, i) =>
+    trozo.startsWith("*") && trozo.endsWith("*") && trozo.length > 2 ? (
+      <strong key={i}>{trozo.slice(1, -1)}</strong>
+    ) : (
+      <span key={i}>{trozo}</span>
+    ),
+  );
 }

@@ -20,6 +20,7 @@ import { Chat as ChatType } from "@/types/evolution.types";
 import { useMediaQuery } from "@/utils/useMediaQuery";
 
 import { Messages } from "./messages";
+import { fotoSiVigente } from "@/lib/foto-perfil";
 
 const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
 
@@ -213,7 +214,7 @@ function Chat() {
                 >
                   <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={chat.profilePicUrl} alt={name} />
+                      <AvatarImage src={fotoSiVigente(chat.profilePicUrl)} alt={name} />
                       <AvatarFallback className="bg-muted text-muted-foreground">
                         {kind === "groups" ? <Users className="h-5 w-5" /> : <User className="h-5 w-5" />}
                       </AvatarFallback>
