@@ -188,8 +188,29 @@ public/assets/images/pagos/binance-pay.png
 navegador: un archivo local o una ruta relativa no valen. Alojarlo aquí es lo que garantiza que el
 ejemplo siga vivo — y da el molde para el logo de cualquier banco.
 
-⚠️ **La pestaña de Pago Móvil va sin `thumbnailUrl` todavía**, a la espera de su logo. **Se pone
-cuando exista el archivo, no antes**: un `thumbnailUrl` que da 404 hace fallar el envío entero.
+### 7.1 🔴 Y no se puede tener icono Y textos propios: hay que elegir
+
+Lo pidió Luis viéndolo: *«ahí quiero poner el logo o icono de Binance Pay… no hace falta indicar
+"EVP:", es mejor "ID:", y el botón que diga "Copiar Binance ID"»*. **Las dos cosas a la vez no
+existen**, y conviene tenerlo escrito con los campos delante:
+
+| | Con `payment_info` (la del PIX) | Con `copy` (botones) |
+| :--- | :--- | :--- |
+| Icono a la izquierda | 🟢 Sí — **pero es el de PIX, fijo** | 🔴 No hay |
+| Título | 🟢 `merchant_name` | 🟢 `title` |
+| La línea de datos | 🟡 **`key_type` + `key`** → sale `EVP: 123…` | 🟢 `description`, lo escribes tú |
+| Texto del botón | 🔴 **«Copiar clave Pix»**, de WhatsApp | 🟢 `displayText`, lo escribes tú |
+| Imagen propia | 🔴 No admite | 🟡 Sí, pero **al ancho del mensaje** |
+
+**La tarjeta del PIX la dibuja el cliente de WhatsApp con tres datos**, y ni el icono ni el rótulo del
+botón son campos del mensaje: no hay configuración que llegue ahí. Por eso las pestañas de Binance
+Pay y Pago Móvil usan **`copy`**: se pierde el icono y se gana escribir «ID:» y «Copiar Binance ID»,
+que era lo que se pidió. El rombo del título (`◆`) es un emoji, lo único que se le parece.
+
+⚠️ **La pestaña de Pago Móvil va sin `thumbnailUrl`**, y las dos de pago tampoco lo llevan: la imagen
+de cabecera se pinta **al ancho del mensaje** y convierte la tarjeta en un bloque. El logo quedó en la
+pestaña **CTA**, que es donde tiene sentido enseñarlo. 🔴 Y si algún día se pone uno, **el archivo
+tiene que existir antes**: un `thumbnailUrl` que da 404 hace fallar el envío entero.
 
 🔴 **Al añadir una pestaña hay que tocar los CUATRO idiomas** (`src/translate/languages/*.json`,
 clave `testInteractive.tabs`). Una clave que falta no rompe nada: pinta el identificador crudo.

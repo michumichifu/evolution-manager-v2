@@ -14,21 +14,25 @@ import { api } from "@/lib/queries/api";
 
 import { Instance } from "@/types/evolution.types";
 
-type TabKey = "reply" | "cta" | "binance" | "pagoMovil" | "list" | "carousel";
+type TabKey = "reply" | "cta" | "pix" | "binance" | "pagoMovil" | "list" | "carousel";
 
 const ENDPOINT: Record<TabKey, string> = {
   reply: "sendButtons",
   cta: "sendButtons",
+  pix: "sendButtons",
   binance: "sendButtons",
   pagoMovil: "sendButtons",
   list: "sendList",
   carousel: "sendCarousel",
 };
 
-// PD: el logo viaja en el propio Manager, así que la URL es fija y siempre está viva. Sirve de
-// ejemplo de cómo se pone el de cualquier banco o billetera: una URL pública que el servidor de
-// Evolution pueda descargar.
-const LOGO_BINANCE = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png";
+// PD: una imagen de cabecera para el ejemplo de botones CTA, alojada en el propio Manager para que
+// la URL sea pública y estable — la descarga el SERVIDOR de Evolution, no el navegador.
+//
+// 🔴 Va APAISADA (1000×250), no cuadrada: WhatsApp la estira al ancho del mensaje, así que una
+// imagen 1:1 se come media pantalla del chat.
+// 🔴 Y NO sirve para una tarjeta de pago: ese tipo de mensaje no admite imagen (ver más abajo).
+const LOGO_EJEMPLO = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png";
 
 const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
   reply: {
@@ -45,6 +49,7 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
     title: "Botones CTA",
     description: "Botones de enlace y de copiar código (cta_url + cta_copy):",
     footer: "Máx. 2 botones CTA por mensaje",
+    thumbnailUrl: LOGO_EJEMPLO,
     buttons: [
       { type: "url", displayText: "🌐 Abrir sitio web", url: "https://ejemplo.com" },
       {
@@ -54,28 +59,45 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
       },
     ],
   },
-  // 🔴 Aquí había un ejemplo de PIX y se quitó: el PIX es de WhatsApp Pay BRASIL, la tarjeta la
-  // dibuja el teléfono, sus llaves son brasileñas y ni siquiera admite logo. Fuera de Brasil un
-  // cobro se arma con `copy` + `url` y su imagen de cabecera, que es lo que hay debajo.
-  binance: {
-    title: "Pago con Binance Pay",
-    description:
-      "1. Abre Binance → Pay → Enviar\n2. Pega el Pay ID\n3. Envía el monto en USDT y manda el comprobante por aquí",
-    footer: "Red: USDT (TRC20)",
-    thumbnailUrl: LOGO_BINANCE,
+  // 🔴 El PIX se queda como REFERENCIA, pero no sirve fuera de Brasil: es WhatsApp Pay Brasil, la
+  // tarjeta compacta la dibuja el teléfono —no se puede pedir esa forma para otra cosa—, sus llaves
+  // son brasileñas y **no admite logo**. Un cobro de aquí se arma con `copy` + `url` y su imagen de
+  // cabecera, que es lo que hacen las dos pestañas siguientes.
+  pix: {
+    title: "Pago con PIX",
+    description: "Toca para pagar con PIX (payment_info)",
+    footer: "WhatsApp Pay",
     buttons: [
-      { type: "copy", displayText: "📋 Copiar Pay ID", copyCode: "123456789" },
-      { type: "url", displayText: "🌐 Abrir Binance Pay", url: "https://www.binance.com/es/pay" },
+      {
+        type: "pix",
+        currency: "BRL",
+        name: "Empresa de Ejemplo",
+        keyType: "random",
+        key: "abc12345-6789-0000-aaaa-bbbbccccdddd",
+      },
     ],
   },
+  // 🔴 POR QUÉ ESTOS DOS NO USAN `type: "pix"`, aunque su tarjeta sea la que se quería copiar.
+  //
+  // Con `payment_info` (el PIX) la tarjeta la dibuja WHATSAPP a partir de `merchant_name`, `key` y
+  // `key_type`. Sale el icono, sí — pero **el prefijo de la línea es el `key_type`** (`EVP:`, que no
+  // se entiende) y **el botón dice «Copiar clave Pix»**, texto del propio WhatsApp. Ninguno de los
+  // dos es un campo del mensaje, así que no hay forma de escribir «ID:» ni «Copiar Binance ID».
+  //
+  // Con `copy` se escribe TODO el texto, que es lo que se pidió, a cambio de quedarse sin icono. El
+  // rombo del título es un emoji, lo único que se le parece.
+  //
+  // 🔴 Y NADA de `thumbnailUrl` aquí: la imagen de cabecera se pinta al ancho del mensaje y lo
+  // convierte en un bloque, que es justo lo que se descartó.
+  binance: {
+    title: "◆ Binance Pay",
+    description: "ID: 123456789",
+    buttons: [{ type: "copy", displayText: "Copiar Binance ID", copyCode: "123456789" }],
+  },
   pagoMovil: {
-    title: "Pago Móvil",
-    description: "Banco 0134\nCédula V-12.345.678\nTeléfono 0414-1234567",
-    footer: "Envía el comprobante por aquí",
-    buttons: [
-      { type: "copy", displayText: "📋 Copiar cédula", copyCode: "V-12345678" },
-      { type: "copy", displayText: "📋 Copiar teléfono", copyCode: "04141234567" },
-    ],
+    title: "Pago Móvil · Banco 0134",
+    description: "Cédula: V-12.345.678\nTeléfono: 0414-1234567",
+    buttons: [{ type: "copy", displayText: "Copiar teléfono", copyCode: "04141234567" }],
   },
   list: {
     title: "Menú de servicios",
@@ -134,6 +156,7 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
   const [payloads, setPayloads] = useState<Record<TabKey, string>>(() => ({
     reply: JSON.stringify(TEMPLATES.reply, null, 2),
     cta: JSON.stringify(TEMPLATES.cta, null, 2),
+    pix: JSON.stringify(TEMPLATES.pix, null, 2),
     binance: JSON.stringify(TEMPLATES.binance, null, 2),
     pagoMovil: JSON.stringify(TEMPLATES.pagoMovil, null, 2),
     list: JSON.stringify(TEMPLATES.list, null, 2),
@@ -184,6 +207,7 @@ export function TestInteractiveModal({ instance, open, onOpenChange }: TestInter
   const tabs: { key: TabKey; label: string }[] = [
     { key: "reply", label: t("testInteractive.tabs.reply") },
     { key: "cta", label: t("testInteractive.tabs.cta") },
+    { key: "pix", label: t("testInteractive.tabs.pix") },
     { key: "binance", label: t("testInteractive.tabs.binance") },
     { key: "pagoMovil", label: t("testInteractive.tabs.pagoMovil") },
     { key: "list", label: t("testInteractive.tabs.list") },
