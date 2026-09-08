@@ -287,6 +287,53 @@ const MessageContent = ({ message }: { message: Message }) => {
     case "stickerMessage":
       return <img src={message.message.mediaUrl} alt="Sticker" className="max-w-32 max-h-32 object-contain" />;
 
+    // PD: los botones de `sendButtons` y las plantillas de la Cloud API llegan sin texto plano,
+    // y el chat los pintaba como «Unknown message type: interactiveMessage».
+    case "interactiveMessage":
+    case "templateMessage": {
+      const nodo = message.message.interactiveMessage ?? message.message.templateMessage?.interactiveMessageTemplate;
+
+      // Sin `return` aquí el componente devolvería undefined y React reventaría: no vale `break`.
+      if (!nodo) return <span className="text-xs text-muted-foreground">Mensaje interactivo sin contenido</span>;
+
+      return (
+        <div className="flex flex-col gap-2">
+          {(nodo.header?.title || nodo.header?.text) && <p className="font-medium">{nodo.header?.title ?? nodo.header?.text}</p>}
+          {nodo.body?.text && <p className="whitespace-pre-wrap text-sm">{nodo.body.text}</p>}
+          {nodo.footer?.text && <p className="text-xs text-muted-foreground">{nodo.footer.text}</p>}
+          {nodo.nativeFlowMessage?.buttons?.length > 0 && (
+            <div className="flex flex-col gap-1 border-t border-current/20 pt-2">
+              {nodo.nativeFlowMessage.buttons.map((boton: any, i: number) => (
+                <span key={i} className="rounded bg-muted px-2 py-1 text-center text-xs">
+                  {etiquetaDeBoton(boton)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // PD: y la respuesta del usuario al tocar uno de esos botones.
+    case "templateButtonReplyMessage":
+    case "buttonsResponseMessage":
+    case "interactiveResponseMessage": {
+      const respuesta =
+        message.message.templateButtonReplyMessage?.selectedDisplayText ??
+        message.message.buttonsResponseMessage?.selectedDisplayText ??
+        message.message.buttonsResponseMessage?.selectedButtonId ??
+        respuestaDeFlujoNativo(message.message.interactiveResponseMessage);
+
+      if (!respuesta) return <span className="text-xs text-muted-foreground">Respuesta sin texto</span>;
+
+      return (
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>▶️</span>
+          {respuesta}
+        </span>
+      );
+    }
+
     default:
       // Fallback for unknown message types
       return (
@@ -685,3 +732,29 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
 }
 
 export { Messages };
+
+/** PD: la etiqueta visible de un botón de flujo nativo vive dentro de `buttonParamsJson`. */
+function etiquetaDeBoton(boton: any): string {
+  try {
+    const params = JSON.parse(boton?.buttonParamsJson ?? "{}");
+    return params.display_text ?? params.title ?? boton?.name ?? "Botón";
+  } catch {
+    return boton?.name ?? "Botón";
+  }
+}
+
+/** PD: lo que eligió el usuario cuando la respuesta llega como flujo nativo. */
+function respuestaDeFlujoNativo(interactiveResponseMessage: any): string | undefined {
+  const respuesta = interactiveResponseMessage?.nativeFlowResponseMessage;
+
+  if (respuesta?.paramsJson) {
+    try {
+      const params = JSON.parse(respuesta.paramsJson);
+      return params.display_text ?? params.title ?? params.id;
+    } catch {
+      // si no es JSON válido se cae al nombre del flujo
+    }
+  }
+
+  return respuesta?.name ?? interactiveResponseMessage?.body?.text;
+}
