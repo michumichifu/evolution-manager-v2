@@ -10,7 +10,28 @@ export interface WebSocketConnection {
   disconnect: () => void;
 }
 
+// 🔴 WEBSOCKET APAGADO A PROPÓSITO (decisión de Luis, 8 sep 2026).
+// El servidor no tiene WEBSOCKET_ENABLED, así que el Manager se pasaba la vida
+// reintentando la conexión y llenando la consola de errores. Para ver los mensajes
+// en vivo se usa Chatwoot, que ya está integrado; aquí basta con recargar.
+// Para volver a encenderlo: poner WEBSOCKET_HABILITADO en true Y, en el servidor,
+// WEBSOCKET_ENABLED=true + WEBSOCKET_GLOBAL_EVENTS=true (el Manager escucha el
+// canal global). ⚠️ Antes de hacerlo, leer el aviso de seguridad del apartado 13
+// del INFORME de la agencia: el canal global reparte los eventos de TODAS las
+// instancias y el `allowRequest` del backend admite conexiones sin apikey cuando
+// la IP de origen está en WEBSOCKET_ALLOWED_HOSTS.
+const WEBSOCKET_HABILITADO = false;
+
+const socketInerte = (): WebSocketConnection => ({
+  on: () => {},
+  off: () => {},
+  connect: () => {},
+  disconnect: () => {},
+});
+
 export const connectSocket = (serverUrl: string): WebSocketConnection => {
+  if (!WEBSOCKET_HABILITADO) return socketInerte();
+
   // Check if socket already exists for this URL
   if (activeSockets.has(serverUrl)) {
     const existingSocket = activeSockets.get(serverUrl)!;
