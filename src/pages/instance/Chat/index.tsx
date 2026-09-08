@@ -23,6 +23,12 @@ import { Messages } from "./messages";
 
 const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
 
+// 🔴 Un solo chat sin `remoteJid` tumbaba TODA la vista (`Cannot read properties of null`),
+// porque el filtro de `visibleChats` hace `c.remoteJid.includes(...)`. Pasó el 8 sep 2026:
+// en Cloud API los chats se derivan de los mensajes, y un webhook de prueba mandado a mano
+// sin `from` dejó un chat con `remoteJid: null`. Se descartan en el origen.
+const conJid = (lista: ChatType[]): ChatType[] => lista.filter((c) => !!c?.remoteJid);
+
 type ChatKind = "contacts" | "groups";
 
 function Chat() {
@@ -40,10 +46,10 @@ function Chat() {
   const { data: chats } = useFindChats({ instanceName: instance?.name });
 
   const allChats = useMemo(() => {
-    if (!chats) return realtimeChats;
+    if (!chats) return conJid(realtimeChats);
     const map = new Map<string, ChatType>();
-    chats.forEach((c) => map.set(c.remoteJid, c));
-    realtimeChats.forEach((c) => {
+    conJid(chats).forEach((c) => map.set(c.remoteJid, c));
+    conJid(realtimeChats).forEach((c) => {
       const existing = map.get(c.remoteJid);
       map.set(c.remoteJid, existing ? { ...existing, ...c } : c);
     });
