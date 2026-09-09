@@ -32,7 +32,8 @@ const ENDPOINT: Record<TabKey, string> = {
 // 🔴 Va APAISADA (1000×250), no cuadrada: WhatsApp la estira al ancho del mensaje, así que una
 // imagen 1:1 se come media pantalla del chat.
 // 🔴 Y NO sirve para una tarjeta de pago: ese tipo de mensaje no admite imagen (ver más abajo).
-const LOGO_EJEMPLO = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png";
+const LOGO_BINANCE = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/binance-pay.png";
+const LOGO_PAGO_MOVIL = "https://evolution.proyecciondigital.org/manager/assets/images/pagos/pago-movil.png";
 
 const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
   reply: {
@@ -49,7 +50,7 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
     title: "Botones CTA",
     description: "Botones de enlace y de copiar código (cta_url + cta_copy):",
     footer: "Máx. 2 botones CTA por mensaje",
-    thumbnailUrl: LOGO_EJEMPLO,
+    thumbnailUrl: LOGO_BINANCE,
     buttons: [
       { type: "url", displayText: "🌐 Abrir sitio web", url: "https://ejemplo.com" },
       {
@@ -77,27 +78,36 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
       },
     ],
   },
-  // 🔴 POR QUÉ ESTOS DOS NO USAN `type: "pix"`, aunque su tarjeta sea la que se quería copiar.
+  // 🔴 POR QUÉ NO USAN LA TARJETA DEL PIX, que era lo que se quería copiar:
   //
-  // Con `payment_info` (el PIX) la tarjeta la dibuja WHATSAPP a partir de `merchant_name`, `key` y
-  // `key_type`. Sale el icono, sí — pero **el prefijo de la línea es el `key_type`** (`EVP:`, que no
-  // se entiende) y **el botón dice «Copiar clave Pix»**, texto del propio WhatsApp. Ninguno de los
-  // dos es un campo del mensaje, así que no hay forma de escribir «ID:» ni «Copiar Binance ID».
+  // Esa tarjeta la dibuja WhatsApp y de ella **solo son nuestros el título y la línea de datos**.
+  // El icono no viaja en el mensaje —el protocolo de un botón nativo solo tiene `name` y una cadena
+  // JSON— y el rótulo del botón («Copiar clave Pix») lo escribe el cliente. Probado además que el
+  // `key_type` NO es texto libre: con `"ID"` WhatsApp pintó «Teléfono», porque lo traduce y cae a un
+  // valor por defecto. Con esos tres límites, la tarjeta del PIX no sirve para cobrar aquí.
   //
-  // Con `copy` se escribe TODO el texto, que es lo que se pidió, a cambio de quedarse sin icono. El
-  // rombo del título es un emoji, lo único que se le parece.
-  //
-  // 🔴 Y NADA de `thumbnailUrl` aquí: la imagen de cabecera se pinta al ancho del mensaje y lo
-  // convierte en un bloque, que es justo lo que se descartó.
+  // La pestaña PIX se queda al lado **como referencia de que existe**.
   binance: {
-    title: "◆ Binance Pay",
-    description: "ID: 123456789",
+    thumbnailUrl: LOGO_BINANCE,
+    description:
+      "Método de pago: *Binance Pay*\n\nID de Binance: 123456789\n\nPaga a este ID y envíanos captura del pago de vuelta",
+    footer: "Tu cita queda confirmada al recibir el comprobante",
     buttons: [{ type: "copy", displayText: "Copiar Binance ID", copyCode: "123456789" }],
   },
   pagoMovil: {
-    title: "Pago Móvil · Banco 0134",
-    description: "Cédula: V-12.345.678\nTeléfono: 0414-1234567",
-    buttons: [{ type: "copy", displayText: "Copiar teléfono", copyCode: "04141234567" }],
+    // El logo es genérico y SIN banco, como se pidió: se dibujó aquí mismo (un teléfono y el
+    // rótulo), no es la marca de ninguna entidad. Mismo formato apaisado que el de Binance para que
+    // las dos tarjetas se vean iguales en el chat.
+    thumbnailUrl: LOGO_PAGO_MOVIL,
+    // 🔴 La cédula y el teléfono van SOLO en número: sin puntos, sin guiones y sin espacios. Es lo
+    // que se teclea en la app del banco, y así lo que se ve es exactamente lo que se copia.
+    description:
+      "Método de pago - *Pago Móvil*\n\nBanco: 0105 - Mercantil\nCédula: 12345678\nTeléfono: 04141234567\n\nHaz el pago y envíanos el capture o la referencia de vuelta",
+    footer: "Tu cita queda confirmada al recibir el comprobante",
+    buttons: [
+      { type: "copy", displayText: "Copiar cédula", copyCode: "12345678" },
+      { type: "copy", displayText: "Copiar teléfono", copyCode: "04141234567" },
+    ],
   },
   list: {
     title: "Menú de servicios",

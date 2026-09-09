@@ -207,10 +207,38 @@ botón son campos del mensaje: no hay configuración que llegue ahí. Por eso la
 Pay y Pago Móvil usan **`copy`**: se pierde el icono y se gana escribir «ID:» y «Copiar Binance ID»,
 que era lo que se pidió. El rombo del título (`◆`) es un emoji, lo único que se le parece.
 
-⚠️ **La pestaña de Pago Móvil va sin `thumbnailUrl`**, y las dos de pago tampoco lo llevan: la imagen
-de cabecera se pinta **al ancho del mensaje** y convierte la tarjeta en un bloque. El logo quedó en la
-pestaña **CTA**, que es donde tiene sentido enseñarlo. 🔴 Y si algún día se pone uno, **el archivo
-tiene que existir antes**: un `thumbnailUrl` que da 404 hace fallar el envío entero.
+### 7.2 Cómo quedaron las dos, después de probarlo todo (8 sep 2026)
+
+Se intentó reproducir la tarjeta del PIX con los datos de Binance —es lo que se quería— y se
+descartó al medirlo: **el icono y el rótulo «Copiar clave Pix» no son campos del mensaje** y el
+`key_type` tampoco es texto libre (con `"ID"` WhatsApp pinta «Teléfono»). Decisión de Luis: *«esa
+plantilla de PIX no nos va a servir, mejor olvidarla, dejarla ahí de ejemplo para saber que existe»*.
+El detalle de las cinco pruebas está en el `DESPLIEGUE-PD.md` **del backend**, § 7.2.
+
+**Las dos pestañas de cobro son imagen + texto + botón de copiar**, que da control total del texto:
+
+| | Binance Pay | Pago Móvil |
+| :--- | :--- | :--- |
+| Imagen | `pagos/binance-pay.png` | `pagos/pago-movil.png` |
+| Primera línea | `Método de pago: *Binance Pay*` | `Método de pago - *Pago Móvil*` |
+| Datos | `ID de Binance: …` | `Banco`, `Cédula`, `Teléfono` |
+| Instrucción | «Paga a este ID y envíanos captura…» | «Haz el pago y envíanos el capture…» |
+| Pie | «Tu cita queda confirmada al recibir el comprobante» | igual |
+| Botones | Copiar Binance ID | Copiar cédula · Copiar teléfono |
+
+🔴 **La cédula y el teléfono van SOLO en número**, sin puntos, guiones ni espacios: es lo que se
+teclea en la app del banco, y así **lo que se ve es exactamente lo que se copia**.
+
+🔴 **Sin título (`title`)**, a propósito: el texto ya empieza por su propia línea en negrita. Eso
+destapó un fallo de upstream —`*${data.title}*` sin comprobar que existiera, que llegaba como
+**undefined**— corregido en el backend.
+
+**Los dos logos son apaisados (1000×250)**, no cuadrados: WhatsApp estira la imagen de cabecera al
+ancho del mensaje y un logo 1:1 se come media pantalla. El de Pago Móvil **se dibujó aquí** (un
+teléfono y el rótulo, sin marca de ningún banco), porque se pidió genérico.
+
+🔴 **Un `thumbnailUrl` que da 404 hace fallar el envío entero**: el archivo va antes que la plantilla
+que lo usa.
 
 🔴 **Al añadir una pestaña hay que tocar los CUATRO idiomas** (`src/translate/languages/*.json`,
 clave `testInteractive.tabs`). Una clave que falta no rompe nada: pinta el identificador crudo.
