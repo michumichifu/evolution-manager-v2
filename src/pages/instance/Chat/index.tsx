@@ -206,7 +206,12 @@ function Chat() {
           ) : (
             visibleChats.map((chat) => {
               const selected = remoteJid === chat.remoteJid;
-              const name = chat.pushName || formatJid(chat.remoteJid);
+              // PARCHE PD (9 sep 2026): arriba el nombre de la cuenta; si WhatsApp no manda
+              // ninguno, el usuario, que identifica mucho mejor que el numerón. Y abajo el
+              // usuario, salvo que ya esté arriba por no haber nombre.
+              const name = chat.pushName || chat.usuarioWa || formatJid(chat.remoteJid);
+              const segundaLinea =
+                chat.usuarioWa && chat.usuarioWa !== name ? chat.usuarioWa : formatJid(chat.remoteJid);
 
               return (
                 <button
@@ -232,7 +237,13 @@ function Chat() {
                         <p className="truncate font-medium">{name}</p>
                       </div>
                       <p className="truncate text-sm text-muted-foreground">
-                        {formatJid(chat.remoteJid)}
+                        {/* PARCHE PD (9 sep 2026): quien oculta su número no tiene teléfono
+                            que enseñar aquí, y su identificador no identifica a nadie. En su
+                            sitio va el NOMBRE DE USUARIO de WhatsApp, que es por donde sí se
+                            le busca. Petición de Luis: «en la línea de abajo, donde iría el
+                            teléfono, ahí debe salir el nombre de usuario, y arriba el nombre
+                            de la cuenta». */}
+                        {segundaLinea}
                       </p>
                     </div>
                   </div>

@@ -58,6 +58,9 @@ export type Contact = {
 export type Chat = {
   id: string;
   pushName: string;
+  /** Nombre de usuario de WhatsApp (@fulanito). Es lo único que identifica a quien oculta
+   *  su número: llega en los atributos del mensaje y lo devuelve `fetchChats`. */
+  usuarioWa?: string | null;
   remoteJid: string;
   labels: string[] | null;
   profilePicUrl: string;
