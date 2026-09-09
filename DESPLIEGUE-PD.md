@@ -244,3 +244,19 @@ que lo usa.
 
 🔴 **Al añadir una pestaña hay que tocar los CUATRO idiomas** (`src/translate/languages/*.json`,
 clave `testInteractive.tabs`). Una clave que falta no rompe nada: pinta el identificador crudo.
+
+### 7.3 Por qué estas dos plantillas son así y no otra cosa
+
+Se investigó hasta el final si se podía tener una tarjeta nativa propia, tipo PIX, con el logo de
+Binance. **No se puede**, y la razón no es de código: los pagos nativos de WhatsApp están habilitados
+**por país** —India, Brasil, México e Indonesia— y dentro de cada uno los operan **proveedores de
+pago externos** integrados con Meta (Solution Partner). **RD y Venezuela no están, y la agencia no es
+un método de pago**, así que la vía existe pero no nos toca (decisión de Luis, 8 sep 2026).
+
+**Por eso lo adoptado es imagen + texto + botones de copiar**, que es lo que hay aquí.
+❌ **Y NO se propone dibujar la tarjeta entera como imagen** (logo y datos dentro del PNG): Luis lo
+descartó expresamente.
+
+El relato completo, con fuentes y con lo que sí queda disponible (**WhatsApp Flows**), está en
+`Documentacion/INCIDENCIA - Los mensajes fuera de la ventana de 24 h no salen y Evolution los da por
+enviados (8 sep 2026).md`, apartado 16, de la carpeta de la agencia.
