@@ -672,8 +672,12 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
     );
   };
 
-  const headerName = chat?.pushName || chat?.remoteJid?.split("@")[0];
-  const headerSub = chat?.remoteJid?.split("@")[0];
+  // PARCHE PD (9 sep 2026): en la cabecera, lo mismo que en la lista de chats — arriba el
+  // nombre de la cuenta y debajo, donde iría el teléfono que quien oculta su número no
+  // tiene, su NOMBRE DE USUARIO de WhatsApp. El identificador solo si no hay usuario.
+  const headerName = chat?.pushName || chat?.usuarioWa || chat?.remoteJid?.split("@")[0];
+  const headerSub =
+    chat?.usuarioWa && chat.usuarioWa !== headerName ? chat.usuarioWa : chat?.remoteJid?.split("@")[0];
 
   return (
     <div className="flex h-full flex-col bg-muted/10">
