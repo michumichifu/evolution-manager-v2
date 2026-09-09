@@ -260,3 +260,20 @@ descartó expresamente.
 El relato completo, con fuentes y con lo que sí queda disponible (**WhatsApp Flows**), está en
 `Documentacion/INCIDENCIA - Los mensajes fuera de la ventana de 24 h no salen y Evolution los da por
 enviados (8 sep 2026).md`, apartado 16, de la carpeta de la agencia.
+
+## 8. Las imágenes de catálogo (9 sep 2026)
+
+`public/assets/images/catalogo/` → se sirven en
+`https://evolution.proyecciondigital.org/manager/assets/images/catalogo/…`
+
+Son las piezas del **carrusel de WhatsApp** de Zenithe (diente completo y brackets). Viven aquí por
+la misma razón que los logos de pago: **quien descarga esa URL es el SERVIDOR de Evolution**, no el
+navegador, así que tiene que ser pública y estable.
+
+🔴 **Van apaisadas (1200×628)**, no en el 4:5 de los creativos de Meta Ads: el carrusel recorta al
+centro y se lleva el titular y el precio. El porqué y cómo se componen, en
+`Documentacion/APRENDIZAJE - El carrusel de WhatsApp: por que el creativo del feed no sirve y como se compone (9 sep 2026).md`
+de la carpeta de la agencia.
+
+⚠️ **Son de PRUEBA**: se compusieron a mano a partir de los creativos, no salen de un lote de Panel
+Ads. Si el catálogo pasa a producción, lo limpio es crear un lote propio de piezas apaisadas.
