@@ -95,18 +95,16 @@ const TEMPLATES: Record<TabKey, Record<string, unknown>> = {
     buttons: [{ type: "copy", displayText: "Copiar Binance ID", copyCode: "123456789" }],
   },
   pagoMovil: {
-    // El logo es genérico y SIN banco, como se pidió: se dibujó aquí mismo (un teléfono y el
-    // rótulo), no es la marca de ninguna entidad. Mismo formato apaisado que el de Binance para que
-    // las dos tarjetas se vean iguales en el chat.
     thumbnailUrl: LOGO_PAGO_MOVIL,
-    // 🔴 La cédula y el teléfono van SOLO en número: sin puntos, sin guiones y sin espacios. Es lo
-    // que se teclea en la app del banco, y así lo que se ve es exactamente lo que se copia.
+    // 🔴 Lo que se VE lleva su formato legible (`V-25697719`, `0424-544-1315`) y lo que se COPIA va
+    // limpio, sin guiones ni puntos: es lo que se pega en la app del banco. Son dos cosas distintas
+    // y por eso `copyCode` no es igual al texto.
     description:
-      "Método de pago - *Pago Móvil*\n\nBanco: 0105 - Mercantil\nCédula: 12345678\nTeléfono: 04141234567\n\nHaz el pago y envíanos el capture o la referencia de vuelta",
+      "Método de pago - *Pago Móvil*\n\nBanco: 0105 - Mercantil\nCédula: V-25697719\nTeléfono: 0424-544-1315\n\nHaz el pago y envíanos el capture o la referencia de vuelta",
     footer: "Tu cita queda confirmada al recibir el comprobante",
     buttons: [
-      { type: "copy", displayText: "Copiar cédula", copyCode: "12345678" },
-      { type: "copy", displayText: "Copiar teléfono", copyCode: "04141234567" },
+      { type: "copy", displayText: "Copiar cédula", copyCode: "25697719" },
+      { type: "copy", displayText: "Copiar teléfono", copyCode: "04245441315" },
     ],
   },
   list: {

@@ -226,8 +226,10 @@ El detalle de las cinco pruebas está en el `DESPLIEGUE-PD.md` **del backend**, 
 | Pie | «Tu cita queda confirmada al recibir el comprobante» | igual |
 | Botones | Copiar Binance ID | Copiar cédula · Copiar teléfono |
 
-🔴 **La cédula y el teléfono van SOLO en número**, sin puntos, guiones ni espacios: es lo que se
-teclea en la app del banco, y así **lo que se ve es exactamente lo que se copia**.
+🔴 **Lo que se VE y lo que se COPIA son distintos, a propósito.** En pantalla van con su formato
+legible —`Cédula: V-25697719`, `Teléfono: 0424-544-1315`— y el `copyCode` va **limpio**
+—`25697719`, `04245441315`—, porque es lo que se pega en la app del banco. Por eso `copyCode` no es
+igual al texto: no es un descuido.
 
 🔴 **Sin título (`title`)**, a propósito: el texto ya empieza por su propia línea en negrita. Eso
 destapó un fallo de upstream —`*${data.title}*` sin comprobar que existiera, que llegaba como
