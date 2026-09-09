@@ -121,8 +121,16 @@ function Chat() {
 
   const visibleChats = useMemo(() => {
     const isContacts = kind === "contacts";
+    // 🔴 PARCHE PD (9 sep 2026): LOS `@lid` NO SALÍAN EN NINGUNA DE LAS DOS PESTAÑAS.
+    // Quien oculta su número en WhatsApp llega como `<identificador>@lid`, que no es
+    // `@s.whatsapp.net` ni `@g.us`: el filtro los descartaba, y en la lista solo se veían
+    // conversaciones de gente con el número visible. Son personas, no grupos, así que van
+    // en «Contactos». Lo vio Luis: *«en Evolution estoy viendo únicamente conversaciones
+    // de número de teléfono»*.
     const filtered = allChats.filter((c) =>
-      isContacts ? c.remoteJid.includes("@s.whatsapp.net") : c.remoteJid.includes("@g.us"),
+      isContacts
+        ? c.remoteJid.includes("@s.whatsapp.net") || c.remoteJid.includes("@lid")
+        : c.remoteJid.includes("@g.us"),
     );
     if (!search.trim()) return filtered;
     const q = search.toLowerCase();
