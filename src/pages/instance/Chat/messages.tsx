@@ -17,6 +17,7 @@ import { getToken, TOKEN_ID } from "@/lib/queries/token";
 import { Message } from "@/types/evolution.types";
 
 import { connectSocket, disconnectSocket } from "@/services/websocket/socket";
+import { subtituloDelChat } from "./index";
 
 // Import components from EmbedChatMessage for attachment functionality
 import { MediaOptions } from "../EmbedChatMessage/InputMessage/media-options";
@@ -676,8 +677,9 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
   // nombre de la cuenta y debajo, donde iría el teléfono que quien oculta su número no
   // tiene, su NOMBRE DE USUARIO de WhatsApp. El identificador solo si no hay usuario.
   const headerName = chat?.pushName || chat?.usuarioWa || chat?.remoteJid?.split("@")[0];
-  const headerSub =
-    chat?.usuarioWa && chat.usuarioWa !== headerName ? chat.usuarioWa : chat?.remoteJid?.split("@")[0];
+  // Mismo criterio que la lista, y de la misma función: sin usuario el teléfono; con
+  // usuario y teléfono, los dos; y solo el usuario cuando esa persona oculta su número.
+  const headerSub = chat?.remoteJid ? subtituloDelChat(chat, headerName) : "";
 
   return (
     <div className="flex h-full flex-col bg-muted/10">

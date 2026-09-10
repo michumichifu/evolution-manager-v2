@@ -24,6 +24,30 @@ import { fotoSiVigente } from "@/lib/foto-perfil";
 
 const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
 
+/**
+ * Lo que va DEBAJO del nombre, en el chat y en la cabecera. Son tres casos y los tres
+ * tienen que servir (Luis, 9 sep 2026):
+ *
+ *   · No tiene nombre de usuario        → su teléfono, como ha sido siempre.
+ *   · Tiene usuario Y teléfono          → LOS DOS. Ahí no sobra ninguno de los dos.
+ *   · Tiene usuario y oculta el número  → solo el usuario, que es lo único que hay.
+ *
+ * 🔴 El identificador `<id>@lid` NO es un teléfono y no se enseña como tal: solo aparece
+ * cuando esa persona no tiene usuario y no hay absolutamente nada más con que nombrarla.
+ */
+export const subtituloDelChat = (
+  chat: { remoteJid: string; usuarioWa?: string | null },
+  nombreDeArriba?: string,
+): string => {
+  const identificador = formatJid(chat.remoteJid);
+  const usuario = chat.usuarioWa || "";
+  const ocultaElNumero = chat.remoteJid.includes("@lid");
+
+  if (!usuario) return identificador;
+  if (!ocultaElNumero) return `${identificador} · ${usuario}`;
+  return usuario === nombreDeArriba ? identificador : usuario;
+};
+
 // 🔴 Un solo chat sin `remoteJid` tumbaba TODA la vista (`Cannot read properties of null`),
 // porque el filtro de `visibleChats` hace `c.remoteJid.includes(...)`. Pasó el 8 sep 2026:
 // en Cloud API los chats se derivan de los mensajes, y un webhook de prueba mandado a mano
@@ -207,11 +231,13 @@ function Chat() {
             visibleChats.map((chat) => {
               const selected = remoteJid === chat.remoteJid;
               // PARCHE PD (9 sep 2026): arriba el nombre de la cuenta; si WhatsApp no manda
-              // ninguno, el usuario, que identifica mucho mejor que el numerón. Y abajo el
-              // usuario, salvo que ya esté arriba por no haber nombre.
+              // ninguno, el usuario, que identifica mucho mejor que el numerón.
               const name = chat.pushName || chat.usuarioWa || formatJid(chat.remoteJid);
-              const segundaLinea =
-                chat.usuarioWa && chat.usuarioWa !== name ? chat.usuarioWa : formatJid(chat.remoteJid);
+              // Y abajo, los TRES casos que pidió Luis, que tienen que funcionar los tres:
+              //   · sin usuario            → el teléfono, como siempre
+              //   · usuario Y teléfono     → LOS DOS, que ahí no sobra ninguno
+              //   · usuario sin teléfono   → solo el usuario (oculta su número)
+              const segundaLinea = subtituloDelChat(chat, name);
 
               return (
                 <button
