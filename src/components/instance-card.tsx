@@ -66,9 +66,10 @@ export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }:
       // imagen contesta 403 y la tarjeta se queda en blanco. Pasó ese día a las 15:33 RD,
       // la hora exacta en que caducaba la que el navegador tenía guardada.
       Promise.allSettled([
-        // PD 2026-09-14: `name_status` dice si Meta tiene un nombre nuevo en revisión
-        // (PENDING_REVIEW). Mientras tanto `verified_name` sigue siendo el viejo.
-        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number,name_status`, {
+        // PD 2026-09-14: `new_name_status` dice si Meta tiene un nombre NUEVO en revisión.
+        // 🔴 NO `name_status`: ese es el estado del nombre actual, y PD Cloud da PENDING_REVIEW
+        // sin haber pedido ningún cambio (se leyó mal y la tarjeta avisó de algo que no existía).
+        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number,new_name_status`, {
           headers: { Authorization: `Bearer ${instance.token}` },
           cache: "no-store",
         }).then((r) => (r.ok ? r.json() : null)),
@@ -86,7 +87,7 @@ export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }:
               ? picRes.value.data[0].profile_picture_url
               : undefined;
           const nameStatus =
-            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.name_status : undefined;
+            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.new_name_status : undefined;
           if (name || pic || displayPhone) {
             setDynProfile({ name, pic, displayPhone, nameStatus });
           }
