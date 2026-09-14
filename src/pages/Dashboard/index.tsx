@@ -18,6 +18,7 @@ import { RestorableSessions } from "@/components/restorable-sessions";
 
 import { useFetchInstances } from "@/lib/queries/instance/fetchInstances";
 import { useManageInstance } from "@/lib/queries/instance/manageInstance";
+import { refreshProfiles } from "@/lib/queries/instance/refreshProfiles";
 
 import { Instance } from "@/types/evolution.types";
 
@@ -34,12 +35,49 @@ function Dashboard() {
   const [searchStatus, setSearchStatus] = useState("all");
   const [refreshInfoOpen, setRefreshInfoOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { deleteInstance, logout } = useManageInstance();
   const { data: instances, isLoading, refetch } = useFetchInstances();
 
   const resetTable = async () => {
     await refetch();
+  };
+
+  // PD 2026-09-14: antes el botón solo hacía `resetTable()`, que relee la base, y la base
+  // solo recibe el nombre y la foto al CONECTAR: un nombre cambiado en el teléfono no llegaba
+  // nunca. Ahora se le pregunta a WhatsApp (QR) y a Meta (Cloud API), se guarda y se relee.
+  const actualizarPerfiles = async () => {
+    setIsRefreshing(true);
+    try {
+      const { results } = await refreshProfiles();
+      await resetTable();
+      setRefreshKey((k) => k + 1);
+
+      const cambiadas = results.filter((r) => r.updated).map((r) => r.instanceName);
+      const enRevision = results.filter((r) => r.nameStatus === "PENDING_REVIEW");
+      const fallidas = results.filter((r) => r.error).map((r) => r.instanceName);
+
+      if (cambiadas.length) {
+        toast.success(`Nombre o foto actualizados en: ${cambiadas.join(", ")}`);
+      } else {
+        toast.info("WhatsApp y Meta devuelven los mismos nombres y fotos que ya se veían");
+      }
+      enRevision.forEach((r) =>
+        toast.info(
+          `${r.instanceName}: Meta tiene un nombre nuevo en revisión. Hasta que lo apruebe sigue mostrando «${r.after?.profileName ?? ""}».`,
+          { autoClose: 12000 },
+        ),
+      );
+      if (fallidas.length) {
+        toast.warn(`No se pudo consultar: ${fallidas.join(", ")}`);
+      }
+      setRefreshInfoOpen(false);
+    } catch {
+      toast.error("No se pudo consultar a WhatsApp y Meta");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const closeDeleteModal = () => {
@@ -196,6 +234,7 @@ function Dashboard() {
                 instance={instance}
                 isDeleting={deletingName === instance.name}
                 onDelete={(inst) => setDeleteTarget(inst)}
+                refreshKey={refreshKey}
               />
             ))}
           </div>
@@ -252,15 +291,15 @@ function Dashboard() {
             </DialogTitle>
             <DialogDescription className="space-y-3 pt-2 text-sm text-foreground/80 text-left">
               <p>
-                Al hacer clic en <b>Actualizar</b>, el sistema realiza una sincronización en vivo con <b>Evolution API</b> y <b>Meta Graph API</b> para refrescar:
+                Al hacer clic en <b>Actualizar</b> se pregunta en ese momento por cada cuenta y se guarda lo que responda:
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-xs text-muted-foreground">
-                <li><b>Estado de conexión:</b> Verifica si cada WhatsApp está conectado o desconectado en tiempo real.</li>
-                <li><b>Contadores de actividad:</b> Actualiza los números de mensajes recibidos, enviados y chats activos.</li>
-                <li><b>Datos de perfil y foto oficial:</b> Vuelve a consultar a Meta para cargar los nombres verificados y logos actualizados.</li>
+                <li><b>Nombre y foto del perfil:</b> a WhatsApp en las instancias por QR, y a Meta en las de Cloud API.</li>
+                <li><b>Estado de conexión y contadores:</b> se vuelven a leer los mensajes, contactos y si cada una está conectada.</li>
+                <li><b>Nombre en Cloud API:</b> Meta enseña el nombre que ya APROBÓ. Si hay un cambio en revisión, se avisa y sigue saliendo el anterior hasta que lo apruebe.</li>
               </ul>
               <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground border border-sidebar-border">
-                💡 <b>Operación 100% segura:</b> Esta acción solo actualiza la pantalla. <b>No reinicia el servidor</b>, no corta ninguna llamada ni desconecta a tus clientes ni bots de n8n.
+                💡 <b>Operación segura:</b> no reinicia el servidor ni desconecta ninguna instancia, cliente ni bot de n8n.
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -272,18 +311,7 @@ function Dashboard() {
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium active:scale-95 transition-transform duration-150"
               disabled={isRefreshing}
-              onClick={async () => {
-                setIsRefreshing(true);
-                try {
-                  await resetTable();
-                  toast.success("¡Lista de instancias actualizada correctamente!");
-                  setRefreshInfoOpen(false);
-                } catch (err) {
-                  toast.error("Error al actualizar la lista de instancias");
-                } finally {
-                  setIsRefreshing(false);
-                }
-              }}
+              onClick={actualizarPerfiles}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
               {isRefreshing ? "Actualizando..." : "Actualizar ahora"}

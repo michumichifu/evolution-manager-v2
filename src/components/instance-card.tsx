@@ -31,14 +31,25 @@ interface InstanceCardProps {
   instance: Instance;
   isDeleting?: boolean;
   onDelete: (instance: Instance) => void;
+  /**
+   * PD 2026-09-14: sube cada vez que se pulsa «Actualizar». Sin esto la consulta a Meta de
+   * abajo solo corría al montar la tarjeta —sus dependencias no cambian al releer la lista—,
+   * así que el botón no la repetía y había que recargar la página.
+   */
+  refreshKey?: number;
 }
 
 
-export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardProps) {
+export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }: InstanceCardProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [testOpen, setTestOpen] = useState(false);
-  const [dynProfile, setDynProfile] = useState<{ name?: string; pic?: string; displayPhone?: string } | null>(null);
+  const [dynProfile, setDynProfile] = useState<{
+    name?: string;
+    pic?: string;
+    displayPhone?: string;
+    nameStatus?: string;
+  } | null>(null);
   const [fotosRotas, setFotosRotas] = useState<string[]>([]);
   const numberFormatter = new Intl.NumberFormat(i18n.language);
 
@@ -55,7 +66,9 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
       // imagen contesta 403 y la tarjeta se queda en blanco. Pasó ese día a las 15:33 RD,
       // la hora exacta en que caducaba la que el navegador tenía guardada.
       Promise.allSettled([
-        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number`, {
+        // PD 2026-09-14: `name_status` dice si Meta tiene un nombre nuevo en revisión
+        // (PENDING_REVIEW). Mientras tanto `verified_name` sigue siendo el viejo.
+        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number,name_status`, {
           headers: { Authorization: `Bearer ${instance.token}` },
           cache: "no-store",
         }).then((r) => (r.ok ? r.json() : null)),
@@ -72,13 +85,15 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
             picRes.status === "fulfilled" && picRes.value?.data?.[0]
               ? picRes.value.data[0].profile_picture_url
               : undefined;
+          const nameStatus =
+            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.name_status : undefined;
           if (name || pic || displayPhone) {
-            setDynProfile({ name, pic, displayPhone });
+            setDynProfile({ name, pic, displayPhone, nameStatus });
           }
         })
         .catch(() => {});
     }
-  }, [instance.integration, instance.number, instance.token]);
+  }, [instance.integration, instance.number, instance.token, refreshKey]);
 
   const displayName = dynProfile?.name || instance.profileName || instance.name;
 
@@ -104,6 +119,9 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
             <h3 className="truncate text-base font-semibold text-sidebar-foreground" title={displayName}>
               {displayName}
             </h3>
+            {dynProfile?.nameStatus === "PENDING_REVIEW" && (
+              <p className="text-[11px] font-medium text-amber-500">Nombre nuevo en revisión por Meta</p>
+            )}
           </div>
 
           {/* Fila con el Logo a la izquierda, y a su derecha: Etiqueta Conectado/Desconectado y Nombre de la Instancia */}
