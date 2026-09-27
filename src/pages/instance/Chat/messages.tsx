@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { useInstance } from "@/contexts/InstanceContext";
 
+import { api } from "@/lib/queries/api";
 import { useFindChat } from "@/lib/queries/chat/findChat";
 import { useFindMessages } from "@/lib/queries/chat/findMessages";
 import { useSendMessage, useSendMedia } from "@/lib/queries/chat/sendMessage";
@@ -246,6 +247,87 @@ function plataformaDelAnuncio(message: Message, anuncio: any): "instagram" | "fa
   return undefined;
 }
 
+/**
+ * PD (27 sep 2026): EL ARCHIVO DE UNA FOTO, UN VIDEO O UN AUDIO, PEDIDO A EVOLUTION AL ABRIRLO.
+ *
+ * Sin S3, lo que llega por la Cloud API se guarda con la referencia de Meta y SIN el archivo (no
+ * cabe en la base), así que aquí no había `base64` ni `mediaUrl` y el chat decía «Audio couldn't be
+ * loaded». Luis: «en el chat de Evolution no se ve ningún mensaje del usuario… está enviando notas
+ * de voz». `getBase64FromMediaMessage` lo descarga de Meta por su id (Meta lo guarda unos 30 días).
+ */
+function useArchivoDelMensaje(message: Message, tipoPorDefecto: string) {
+  const { instance } = useInstance();
+  const base64 = message.message?.base64 as string | undefined;
+  const directo = base64 ? (base64.startsWith("data:") ? base64 : `data:${tipoPorDefecto};base64,${base64}`) : (message.message?.mediaUrl as string | undefined);
+  const [src, setSrc] = useState<string | undefined>(directo);
+  const [estado, setEstado] = useState<"listo" | "cargando" | "error">(directo ? "listo" : "cargando");
+
+  useEffect(() => {
+    if (directo || !instance?.name) return;
+    let vivo = true;
+    api
+      .post(`/chat/getBase64FromMediaMessage/${instance.name}`, { message })
+      .then((r) => {
+        if (!vivo) return;
+        const b = r.data?.base64;
+        const tipo = String(r.data?.mimetype || tipoPorDefecto).split(";")[0];
+        if (b) {
+          setSrc(`data:${tipo};base64,${b}`);
+          setEstado("listo");
+        } else {
+          setEstado("error");
+        }
+      })
+      .catch(() => vivo && setEstado("error"));
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directo, instance?.name, message.id]);
+
+  return { src, estado };
+}
+
+const ArchivoNoDisponible = ({ que, estado }: { que: string; estado: "cargando" | "error" }) => (
+  <div className="max-w-xs rounded bg-muted p-3 text-center text-xs text-muted-foreground">
+    {estado === "cargando" ? `Cargando ${que}…` : `No se pudo cargar ${que}: Meta ya no lo tiene o no se pudo descargar`}
+  </div>
+);
+
+const ImagenDelMensaje = ({ message }: { message: Message }) => {
+  const { src, estado } = useArchivoDelMensaje(message, "image/jpeg");
+  return (
+    <div className="flex flex-col gap-2">
+      {src ? (
+        <img src={src} alt="" className="h-auto max-w-full rounded-lg" style={{ maxWidth: "400px", maxHeight: "400px", objectFit: "contain" }} loading="lazy" />
+      ) : (
+        <ArchivoNoDisponible que="la foto" estado={estado === "listo" ? "error" : estado} />
+      )}
+      {message.message.imageMessage?.caption && <p className="text-sm">{message.message.imageMessage.caption}</p>}
+    </div>
+  );
+};
+
+const VideoDelMensaje = ({ message }: { message: Message }) => {
+  const { src, estado } = useArchivoDelMensaje(message, "video/mp4");
+  return (
+    <div className="flex flex-col gap-2">
+      {src ? (
+        <video src={src} controls className="h-auto max-w-full rounded-lg" style={{ maxWidth: "400px", maxHeight: "400px" }} />
+      ) : (
+        <ArchivoNoDisponible que="el video" estado={estado === "listo" ? "error" : estado} />
+      )}
+      {message.message.videoMessage?.caption && <p className="text-sm">{message.message.videoMessage.caption}</p>}
+    </div>
+  );
+};
+
+const AudioDelMensaje = ({ message }: { message: Message }) => {
+  // Las notas de voz son ogg/opus: con `audio/mpeg` fijo el navegador no las reproducía.
+  const { src, estado } = useArchivoDelMensaje(message, "audio/ogg");
+  return src ? <audio controls src={src} className="w-full max-w-xs" /> : <ArchivoNoDisponible que="el audio" estado={estado === "listo" ? "error" : estado} />;
+};
+
 // Component to render different message types based on messageType
 const MessageContent = ({ message }: { message: Message }) => {
   const messageType = message.messageType as string;
@@ -294,81 +376,16 @@ const MessageContent = ({ message }: { message: Message }) => {
     case "extendedTextMessage":
       return <span>{message.message.conversation ?? message.message.extendedTextMessage?.text}</span>;
 
+    // PD (27 sep 2026): foto, video y audio con su archivo pedido a Evolution si no viene en el
+    // mensaje (ver `useArchivoDelMensaje`).
     case "imageMessage":
-      // Use base64 data or mediaUrl for images
-      const imageBase64 = message.message.base64 ? (message.message.base64.startsWith("data:") ? message.message.base64 : `data:image/jpeg;base64,${message.message.base64}`) : null;
-
-      const imageSrc = imageBase64 || message.message.mediaUrl;
-
-      return (
-        <div className="flex flex-col gap-2">
-          {imageSrc ? (
-            <img
-              src={imageSrc}
-              alt="Image"
-              className="rounded-lg max-w-full h-auto"
-              style={{
-                maxWidth: "400px",
-                maxHeight: "400px",
-                objectFit: "contain",
-              }}
-              loading="lazy"
-            />
-          ) : (
-            <div className="rounded bg-muted p-4 max-w-xs">
-              <p className="text-center text-muted-foreground">Image couldn't be loaded</p>
-              <p className="text-center text-xs text-muted-foreground mt-1">Missing base64 data and mediaUrl</p>
-            </div>
-          )}
-          {message.message.imageMessage?.caption && <p className="text-sm">{message.message.imageMessage.caption}</p>}
-        </div>
-      );
+      return <ImagenDelMensaje message={message} />;
 
     case "videoMessage":
-      // Use base64 data or mediaUrl for videos
-      const videoBase64 = message.message.base64 ? (message.message.base64.startsWith("data:") ? message.message.base64 : `data:video/mp4;base64,${message.message.base64}`) : null;
-
-      const videoSrc = videoBase64 || message.message.mediaUrl;
-
-      return (
-        <div className="flex flex-col gap-2">
-          {videoSrc ? (
-            <video
-              src={videoSrc}
-              controls
-              className="rounded-lg max-w-full h-auto"
-              style={{
-                maxWidth: "400px",
-                maxHeight: "400px",
-              }}
-            />
-          ) : (
-            <div className="rounded bg-muted p-4 max-w-xs">
-              <p className="text-center text-muted-foreground">Video couldn't be loaded</p>
-              <p className="text-center text-xs text-muted-foreground mt-1">Missing base64 data and mediaUrl</p>
-            </div>
-          )}
-          {message.message.videoMessage?.caption && <p className="text-sm">{message.message.videoMessage.caption}</p>}
-        </div>
-      );
+      return <VideoDelMensaje message={message} />;
 
     case "audioMessage":
-      // Use base64 data or mediaUrl for audio
-      const audioBase64 = message.message.base64 ? (message.message.base64.startsWith("data:") ? message.message.base64 : `data:audio/mpeg;base64,${message.message.base64}`) : null;
-
-      const audioSrc = audioBase64 || message.message.mediaUrl;
-
-      return audioSrc ? (
-        <audio controls className="w-full max-w-xs">
-          <source src={audioSrc} type="audio/mpeg" />
-          Your browser does not support the audio element.
-        </audio>
-      ) : (
-        <div className="rounded bg-muted p-4 max-w-xs">
-          <p className="text-center text-muted-foreground">Audio couldn't be loaded</p>
-          <p className="text-center text-xs text-muted-foreground mt-1">Missing base64 data and mediaUrl</p>
-        </div>
-      );
+      return <AudioDelMensaje message={message} />;
 
     case "documentMessage":
       return (
