@@ -86,6 +86,9 @@ export type Message = {
   messageTimestamp: string;
   instanceId: string;
   source: string;
+  // PD (27 sep 2026): lo devuelve `findMessages`; ahí viaja `externalAdReply`, el anuncio de origen.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  contextInfo?: any;
 };
 
 export type SendText = {

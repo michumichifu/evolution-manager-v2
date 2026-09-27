@@ -1,4 +1,4 @@
-import { Send, User } from "lucide-react";
+import { ExternalLink, Megaphone, Send, User } from "lucide-react";
 import { RefObject, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -149,6 +149,51 @@ const getMessageText = (messageObj: any): string => {
   }
 
   return String(messageObj);
+};
+
+// PD (27 sep 2026): DE QUÉ ANUNCIO VIENE QUIEN ESCRIBE. WhatsApp enseña en el teléfono la foto del
+// anuncio con su enlace; aquí no se veía. El backend lo guarda en `contextInfo.externalAdReply`, con la
+// misma forma en Baileys y en la Cloud API (en esta, traducido del `referral` de Meta). Luis: «Eso es
+// importante saberlo para saber sobre qué responderle».
+const anuncioDelMensaje = (message: Message) =>
+  message.contextInfo?.externalAdReply ||
+  message.message?.extendedTextMessage?.contextInfo?.externalAdReply ||
+  message.message?.contextInfo?.externalAdReply;
+
+const TarjetaDeAnuncio = ({ message }: { message: Message }) => {
+  const anuncio = anuncioDelMensaje(message);
+  const [sinImagen, setSinImagen] = useState(false);
+  if (!anuncio || !(anuncio.sourceUrl || anuncio.title || anuncio.body)) return null;
+
+  // La miniatura de Meta caduca (parámetro `oe`): si ya venció, ni se pide.
+  const imagen = sinImagen ? undefined : fotoSiVigente(anuncio.thumbnailUrl);
+
+  return (
+    <div className="mb-2 overflow-hidden rounded-md border bg-background text-foreground">
+      {imagen && (
+        <img src={imagen} alt="" className="h-28 w-full object-cover" onError={() => setSinImagen(true)} />
+      )}
+      <div className="space-y-1 px-2 py-1.5">
+        <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <Megaphone className="h-3 w-3" /> Desde un anuncio
+        </div>
+        {anuncio.title && <p className="text-sm font-semibold leading-snug">{anuncio.title}</p>}
+        {anuncio.body && <p className="line-clamp-3 text-xs text-muted-foreground">{anuncio.body}</p>}
+        {anuncio.greetingMessageBody && (
+          <p className="text-xs italic text-muted-foreground">Bienvenida: {anuncio.greetingMessageBody}</p>
+        )}
+        {anuncio.sourceUrl && (
+          <a
+            href={anuncio.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            <ExternalLink className="h-3 w-3" /> Ver el anuncio
+          </a>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // Component to render different message types based on messageType
@@ -663,6 +708,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
             </div>
           )}
           <div className="rounded-lg border bg-muted px-3 py-2 text-sm text-foreground">
+            <TarjetaDeAnuncio message={message} />
             <MessageContent message={message} />
           </div>
           <span className="mt-0.5 block px-1 text-[11px] text-muted-foreground">
