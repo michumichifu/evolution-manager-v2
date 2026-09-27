@@ -325,7 +325,9 @@ const VideoDelMensaje = ({ message }: { message: Message }) => {
 const AudioDelMensaje = ({ message }: { message: Message }) => {
   // Las notas de voz son ogg/opus: con `audio/mpeg` fijo el navegador no las reproducía.
   const { src, estado } = useArchivoDelMensaje(message, "audio/ogg");
-  return src ? <audio controls src={src} className="w-full max-w-xs" /> : <ArchivoNoDisponible que="el audio" estado={estado === "listo" ? "error" : estado} />;
+  // Ancho FIJO: la burbuja toma el ancho de su contenido, y un `w-full` dentro de ella daba 0 y el
+  // reproductor quedaba en una raya (Luis: «sale una línea blanca, no aparece el reproductor»).
+  return src ? <audio controls src={src} className="block h-10" style={{ width: "280px", maxWidth: "100%" }} /> : <ArchivoNoDisponible que="el audio" estado={estado === "listo" ? "error" : estado} />;
 };
 
 // Component to render different message types based on messageType
