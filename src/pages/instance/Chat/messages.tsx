@@ -1,4 +1,4 @@
-import { ExternalLink, Facebook, Instagram, Megaphone, Send, User } from "lucide-react";
+import { Facebook, Instagram, Link2, Megaphone, Send, User } from "lucide-react";
 import { RefObject, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -114,14 +114,10 @@ const DateSeparator = ({ date }: { date: string }) => (
   </div>
 );
 
-const formatMessageTime = (date: Date, locale: string): string =>
-  date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+const formatMessageTime = (date: Date, locale: string): string => date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 
 // WhatsApp-like deterministic color palette per sender
-const SENDER_COLORS = [
-  "#e91e63", "#9c27b0", "#3f51b5", "#2196f3", "#00bcd4",
-  "#009688", "#4caf50", "#ff9800", "#f44336", "#795548",
-];
+const SENDER_COLORS = ["#e91e63", "#9c27b0", "#3f51b5", "#2196f3", "#00bcd4", "#009688", "#4caf50", "#ff9800", "#f44336", "#795548"];
 
 const getSenderColor = (key: string): string => {
   let hash = 0;
@@ -156,9 +152,7 @@ const getMessageText = (messageObj: any): string => {
 // misma forma en Baileys y en la Cloud API (en esta, traducido del `referral` de Meta). Luis: «Eso es
 // importante saberlo para saber sobre qué responderle».
 const anuncioDelMensaje = (message: Message) =>
-  message.contextInfo?.externalAdReply ||
-  message.message?.extendedTextMessage?.contextInfo?.externalAdReply ||
-  message.message?.contextInfo?.externalAdReply;
+  message.contextInfo?.externalAdReply || message.message?.extendedTextMessage?.contextInfo?.externalAdReply || message.message?.contextInfo?.externalAdReply;
 
 const TarjetaDeAnuncio = ({ message }: { message: Message }) => {
   const anuncio = anuncioDelMensaje(message);
@@ -169,52 +163,51 @@ const TarjetaDeAnuncio = ({ message }: { message: Message }) => {
   const imagen = sinImagen ? undefined : fotoSiVigente(anuncio.thumbnailUrl);
   const plataforma = plataformaDelAnuncio(message, anuncio);
 
+  let dominio = anuncio.sourceUrl || "";
+  try {
+    dominio = new URL(anuncio.sourceUrl).hostname.replace(/^www\./, "");
+  } catch {
+    /* se queda la URL tal cual */
+  }
+
+  // EN EL ORDEN DEL TELÉFONO (Luis: «mismo orden como te lo mostré en la captura de WhatsApp»): el
+  // rótulo, la tarjeta del anuncio y, debajo (en la burbuja, fuera de este componente), el mensaje.
   return (
-    <div className="mb-2 overflow-hidden rounded-md border bg-background text-foreground">
-      {/* Entera, sin recortar (Luis: «no se ve la imagen completa, se ve como un banner»). La Cloud API
+    <div className="mb-2 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs italic text-muted-foreground">
+        <Megaphone className="h-3.5 w-3.5" /> Mensaje a partir de un anuncio
+      </div>
+      <div className="overflow-hidden rounded-md border bg-background text-foreground">
+        {/* Entera, sin recortar (Luis: «no se ve la imagen completa, se ve como un banner»). La Cloud API
           manda una miniatura ya cuadrada (306×306): el 4:5 original no viaja en el mensaje. */}
-      {imagen && (
-        <div className="relative">
-          <img
-            src={imagen}
-            alt=""
-            className="block h-auto max-h-80 w-full bg-muted object-contain"
-            onError={() => setSinImagen(true)}
-          />
-          {/* Como en WhatsApp: el logo de la red, abajo a la derecha de la imagen. */}
-          {plataforma && (
-            <span className="absolute bottom-2 right-2 rounded-full bg-white p-1 shadow">
-              <LogoDeRed plataforma={plataforma} />
-            </span>
-          )}
-        </div>
-      )}
-      <div className="space-y-1 px-2 py-1.5">
-        <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          <Megaphone className="h-3 w-3" /> Desde un anuncio
-        </div>
-        {anuncio.title && <p className="text-sm font-semibold leading-snug">{anuncio.title}</p>}
-        {anuncio.body && <p className="line-clamp-3 text-xs text-muted-foreground">{anuncio.body}</p>}
-        {anuncio.greetingMessageBody && (
-          <p className="text-xs italic text-muted-foreground">Bienvenida: {anuncio.greetingMessageBody}</p>
-        )}
-        {(anuncio.sourceUrl || plataforma) && (
-          <div className="flex items-center justify-between gap-2">
-            {anuncio.sourceUrl ? (
-              <a
-                href={anuncio.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <ExternalLink className="h-3 w-3" /> Ver el anuncio
-              </a>
-            ) : (
-              <span />
+        {imagen && (
+          <div className="relative">
+            <img src={imagen} alt="" className="block h-auto max-h-80 w-full bg-muted object-contain" onError={() => setSinImagen(true)} />
+            {/* Como en WhatsApp: el logo de la red, abajo a la derecha de la imagen. */}
+            {plataforma && (
+              <span className="absolute bottom-2 right-2 rounded-full bg-white p-1 shadow">
+                <LogoDeRed plataforma={plataforma} />
+              </span>
             )}
-            {/* Sin imagen, el logo va aquí, a la derecha del enlace. */}
-            {!imagen && plataforma && <LogoDeRed plataforma={plataforma} />}
           </div>
         )}
+        <div className="space-y-0.5 px-3 py-2">
+          {anuncio.title && <p className="text-sm font-semibold leading-snug">{anuncio.title}</p>}
+          {anuncio.body && <p className="line-clamp-1 text-xs text-muted-foreground">{anuncio.body}</p>}
+          {(anuncio.sourceUrl || plataforma) && (
+            <div className="flex items-center justify-between gap-2 pt-1">
+              {anuncio.sourceUrl ? (
+                <a href={anuncio.sourceUrl} target="_blank" rel="noopener noreferrer" title="Ver el anuncio" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline">
+                  <Link2 className="h-3.5 w-3.5" /> {dominio}
+                </a>
+              ) : (
+                <span />
+              )}
+              {/* Sin imagen, el logo va aquí, a la derecha del enlace. */}
+              {!imagen && plataforma && <LogoDeRed plataforma={plataforma} />}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -743,9 +736,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
         <div className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
           <MessageContent message={message} />
         </div>
-        <span className="mt-0.5 block px-1 text-right text-[11px] text-muted-foreground">
-          {formatMessageTime(getMessageTimestamp(message), locale)}
-        </span>
+        <span className="mt-0.5 block px-1 text-right text-[11px] text-muted-foreground">{formatMessageTime(getMessageTimestamp(message), locale)}</span>
       </div>
     </div>
   );
@@ -768,9 +759,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
             <TarjetaDeAnuncio message={message} />
             <MessageContent message={message} />
           </div>
-          <span className="mt-0.5 block px-1 text-[11px] text-muted-foreground">
-            {formatMessageTime(getMessageTimestamp(message), locale)}
-          </span>
+          <span className="mt-0.5 block px-1 text-[11px] text-muted-foreground">{formatMessageTime(getMessageTimestamp(message), locale)}</span>
         </div>
       </div>
     );
@@ -804,9 +793,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
         {groupedMessages.map((group, groupIndex) => (
           <div key={groupIndex}>
             <DateSeparator date={group.date} />
-            {group.messages.map((message) =>
-              message.key.fromMe ? renderBubbleRight(message) : renderBubbleLeft(message),
-            )}
+            {group.messages.map((message) => (message.key.fromMe ? renderBubbleRight(message) : renderBubbleLeft(message)))}
           </div>
         ))}
         <div ref={lastMessageRef as never} />
@@ -819,9 +806,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
             </div>
           )}
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="flex flex-shrink-0 items-center">
-              {instance && <MediaOptions instance={instance} setSelectedMedia={setSelectedMedia} />}
-            </div>
+            <div className="flex flex-shrink-0 items-center">{instance && <MediaOptions instance={instance} setSelectedMedia={setSelectedMedia} />}</div>
             <Textarea
               placeholder={t("chat.input.placeholder", { defaultValue: "Digite uma mensagem..." })}
               name="message"
@@ -840,8 +825,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
               size="icon"
               onClick={sendMessage}
               disabled={(!messageText.trim() && !selectedMedia) || isSending}
-              className="h-9 w-9 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/85 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-50"
-            >
+              className="h-9 w-9 flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/85 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-50">
               <Send className="h-4 w-4" />
               <span className="sr-only">{t("chat.input.send")}</span>
             </Button>
@@ -882,11 +866,7 @@ function respuestaDeFlujoNativo(interactiveResponseMessage: any): string | undef
 
 /** PD: WhatsApp escribe la negrita con *asteriscos*; aquí se pinta de verdad. */
 function conNegritas(texto: string) {
-  return texto.split(/(\*[^*\n]+\*)/g).map((trozo, i) =>
-    trozo.startsWith("*") && trozo.endsWith("*") && trozo.length > 2 ? (
-      <strong key={i}>{trozo.slice(1, -1)}</strong>
-    ) : (
-      <span key={i}>{trozo}</span>
-    ),
-  );
+  return texto
+    .split(/(\*[^*\n]+\*)/g)
+    .map((trozo, i) => (trozo.startsWith("*") && trozo.endsWith("*") && trozo.length > 2 ? <strong key={i}>{trozo.slice(1, -1)}</strong> : <span key={i}>{trozo}</span>));
 }
