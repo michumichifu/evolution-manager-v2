@@ -1,4 +1,4 @@
-import { ExternalLink, Megaphone, Send, User } from "lucide-react";
+import { ExternalLink, Facebook, Instagram, Megaphone, Send, User } from "lucide-react";
 import { RefObject, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -167,11 +167,27 @@ const TarjetaDeAnuncio = ({ message }: { message: Message }) => {
 
   // La miniatura de Meta caduca (parámetro `oe`): si ya venció, ni se pide.
   const imagen = sinImagen ? undefined : fotoSiVigente(anuncio.thumbnailUrl);
+  const plataforma = plataformaDelAnuncio(message, anuncio);
 
   return (
     <div className="mb-2 overflow-hidden rounded-md border bg-background text-foreground">
+      {/* Entera, sin recortar (Luis: «no se ve la imagen completa, se ve como un banner»). La Cloud API
+          manda una miniatura ya cuadrada (306×306): el 4:5 original no viaja en el mensaje. */}
       {imagen && (
-        <img src={imagen} alt="" className="h-28 w-full object-cover" onError={() => setSinImagen(true)} />
+        <div className="relative">
+          <img
+            src={imagen}
+            alt=""
+            className="block h-auto max-h-80 w-full bg-muted object-contain"
+            onError={() => setSinImagen(true)}
+          />
+          {/* Como en WhatsApp: el logo de la red, abajo a la derecha de la imagen. */}
+          {plataforma && (
+            <span className="absolute bottom-2 right-2 rounded-full bg-white p-1 shadow">
+              <LogoDeRed plataforma={plataforma} />
+            </span>
+          )}
+        </div>
       )}
       <div className="space-y-1 px-2 py-1.5">
         <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -182,19 +198,60 @@ const TarjetaDeAnuncio = ({ message }: { message: Message }) => {
         {anuncio.greetingMessageBody && (
           <p className="text-xs italic text-muted-foreground">Bienvenida: {anuncio.greetingMessageBody}</p>
         )}
-        {anuncio.sourceUrl && (
-          <a
-            href={anuncio.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-            <ExternalLink className="h-3 w-3" /> Ver el anuncio
-          </a>
+        {(anuncio.sourceUrl || plataforma) && (
+          <div className="flex items-center justify-between gap-2">
+            {anuncio.sourceUrl ? (
+              <a
+                href={anuncio.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                <ExternalLink className="h-3 w-3" /> Ver el anuncio
+              </a>
+            ) : (
+              <span />
+            )}
+            {/* Sin imagen, el logo va aquí, a la derecha del enlace. */}
+            {!imagen && plataforma && <LogoDeRed plataforma={plataforma} />}
+          </div>
         )}
       </div>
     </div>
   );
 };
+
+const LogoDeRed = ({ plataforma }: { plataforma: "instagram" | "facebook" }) =>
+  plataforma === "instagram" ? (
+    <span title="Instagram" aria-label="Instagram">
+      <Instagram className="h-4 w-4" style={{ color: "#E1306C" }} />
+    </span>
+  ) : (
+    <span title="Facebook" aria-label="Facebook">
+      <Facebook className="h-4 w-4" style={{ color: "#1877F2" }} />
+    </span>
+  );
+
+// De qué red viene, con el MISMO criterio que la tarjeta de WhatsApp: por QR, lo que dice
+// `contextInfo.entryPointConversionApp`; si no, el enlace del anuncio (`fb.me`/facebook.com →
+// Facebook, instagram.com → Instagram). Ni WhatsApp lo sabe seguro —encima del chat pone «a partir de
+// un anuncio en Facebook o Instagram»—, pero su tarjeta enseña el logo del enlace, y Luis lo quiere
+// igual: «sobre la imagen, en el borde derecho inferior, sale un logo de Facebook».
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function plataformaDelAnuncio(message: Message, anuncio: any): "instagram" | "facebook" | undefined {
+  const url = String(anuncio?.sourceUrl || "");
+  const pistas = [
+    message.contextInfo?.entryPointConversionApp,
+    message.message?.extendedTextMessage?.contextInfo?.entryPointConversionApp,
+    anuncio?.sourceApp,
+    /instagram\.com|instagr\.am/i.test(url) ? "instagram" : undefined,
+    /(^|\/\/|\.)(fb\.me|facebook\.com|fb\.com)\b/i.test(url) ? "facebook" : undefined,
+  ]
+    .filter(Boolean)
+    .map((p) => String(p).toLowerCase());
+  if (pistas.some((p) => p.includes("instagram"))) return "instagram";
+  if (pistas.some((p) => p.includes("facebook") || p === "fb")) return "facebook";
+  return undefined;
+}
 
 // Component to render different message types based on messageType
 const MessageContent = ({ message }: { message: Message }) => {
