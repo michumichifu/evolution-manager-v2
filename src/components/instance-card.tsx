@@ -10,7 +10,7 @@ import { TestInteractiveModal } from "@/components/test-interactive-modal";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 
 import { Instance } from "@/types/evolution.types";
-import { avisoMeta, esCloudApi, haceCuanto } from "@/lib/estado-meta";
+import { avisoMeta, esCloudApi, fechaRD, haceCuanto, lineaHistorial, ultimoCambio } from "@/lib/estado-meta";
 import { fotoVigente } from "@/lib/foto-perfil";
 
 const StatusBadge = ({ status }: { status?: string }) => {
@@ -55,6 +55,7 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
   const cloudApi = esCloudApi(instance);
   const aviso = avisoMeta(instance);
   const comprobadoMeta = cloudApi ? haceCuanto(instance.metaCheckedAt) : null;
+  const cambio = cloudApi ? ultimoCambio(instance) : null;
   const dynProfile = cloudApi
     ? {
         name: instance.metaVerifiedName ?? undefined,
@@ -136,6 +137,20 @@ export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardPro
             <p className={`w-full text-[11px] font-medium leading-snug ${aviso.grave ? "text-red-500" : "text-amber-500"}`}>
               {aviso.texto}
             </p>
+          )}
+          {/* PD 2026-10-03: el código (para saber a futuro qué tipo de desconexión fue) y desde
+              cuándo lo vemos caído. «Desde» es el primer chequeo que lo vio, no la hora exacta. */}
+          {cloudApi && aviso?.grave && (
+            <p className="w-full font-mono text-[11px] leading-snug text-sidebar-foreground/70">
+              Meta {instance.metaCodigo ?? "?"}
+              {instance.metaFailingSince ? ` · visto caído desde ${fechaRD(instance.metaFailingSince)}` : ""}
+            </p>
+          )}
+          {cloudApi && cambio && (
+            <p className="w-full text-[11px] leading-snug text-sidebar-foreground/60">Último cambio: {lineaHistorial(cambio)}</p>
+          )}
+          {cloudApi && instance.metaUltimoAviso && (
+            <p className="w-full text-[11px] leading-snug text-sidebar-foreground/60">{lineaHistorial(instance.metaUltimoAviso)}</p>
           )}
         </button>
 

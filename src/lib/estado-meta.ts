@@ -1,4 +1,4 @@
-import { Instance } from "@/types/evolution.types";
+import { Instance, MetaHistorialEntrada } from "@/types/evolution.types";
 
 /**
  * PD 2026-10-03: el estado de una instancia Cloud API según Meta.
@@ -37,3 +37,38 @@ export function haceCuanto(iso?: string | null, ahora: Date = new Date()): strin
   if (h < 48) return `hace ${h} h`;
   return `hace ${Math.round(h / 24)} días`;
 }
+
+/** Una fecha en hora de RD (Luis trabaja en RD; la VPS2 está en hora de Berlín): «3 oct, 05:20». */
+export function fechaRD(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("es-DO", {
+    timeZone: "America/Santo_Domingo",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/** Una entrada del historial en una línea: «3 oct, 05:20 · CONNECTED → 100/33». */
+export function lineaHistorial(h: MetaHistorialEntrada): string {
+  if (h.tipo === "estado") {
+    if (!h.de && !h.codigoDe) return `${fechaRD(h.at)} · primer chequeo: ${h.codigoA ?? "sin comprobar"}`;
+    return `${fechaRD(h.at)} · ${h.codigoDe ?? "sin comprobar"} → ${h.codigoA ?? "sin comprobar"}`;
+  }
+  const cuando = fechaRD(h.metaAt ?? h.at);
+  return `${cuando} · aviso de Meta: ${h.resumen}`;
+}
+
+/** El último CAMBIO de estado de verdad (no los avisos, ni el primer chequeo). */
+export const ultimoCambio = (instance: Instance) =>
+  (instance.metaHistorial ?? []).find((h) => h.tipo === "estado" && (h.de || h.codigoDe)) ?? null;
+
+/** El historial por fecha, la más nueva arriba (un aviso cuenta con la hora en que lo generó Meta). */
+export const historialOrdenado = (instance: Instance): MetaHistorialEntrada[] => {
+  const cuando = (h: MetaHistorialEntrada) => Date.parse((h.tipo === "aviso" && h.metaAt) || h.at) || 0;
+  return [...(instance.metaHistorial ?? [])].sort((a, b) => cuando(b) - cuando(a));
+};

@@ -12,7 +12,7 @@ import QRCode from "react-qr-code";
 
 import { BaseHeader } from "@/components/base-header";
 import { InstanceStatus } from "@/components/instance-status";
-import { esCloudApi, haceCuanto } from "@/lib/estado-meta";
+import { esCloudApi, fechaRD, haceCuanto, historialOrdenado, lineaHistorial } from "@/lib/estado-meta";
 import { InstanceToken } from "@/components/instance-token";
 import { useTheme } from "@/components/theme-provider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -266,7 +266,29 @@ function DashboardInstance() {
                   {comprobadoMeta ? ` Comprobado ${comprobadoMeta}.` : ""}
                 </p>
                 {instance.metaError && <p className="break-all font-mono text-xs text-muted-foreground">{instance.metaError}</p>}
+                <p className="font-mono text-xs text-muted-foreground">
+                  Meta {instance.metaCodigo ?? "?"}
+                  {instance.metaGraphError?.type ? ` · ${instance.metaGraphError.type}` : ""}
+                  {instance.metaGraphError?.fbtrace_id ? ` · fbtrace_id ${instance.metaGraphError.fbtrace_id}` : ""}
+                  {instance.metaFailingSince ? ` · visto caído desde ${fechaRD(instance.metaFailingSince)}` : ""}
+                  {instance.metaLastOkAt ? ` · funcionaba el ${fechaRD(instance.metaLastOkAt)}` : ""}
+                </p>
               </Alert>
+            )}
+
+            {/* PD 2026-10-03: el historial corto, para saber a futuro qué tipo de desconexión fue
+                (cambios de estado vistos por el chequeo y avisos de cuenta que mandó Meta). */}
+            {cloudApi && (instance.metaHistorial?.length ?? 0) > 0 && (
+              <div className="w-full">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Historial de Meta</p>
+                <ul className="space-y-0.5 text-xs text-muted-foreground">
+                  {historialOrdenado(instance).map((h, i) => (
+                    <li key={`${h.at}-${i}`} className="break-words font-mono">
+                      {lineaHistorial(h)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {connected && cloudApi && instance.metaMotivo && (

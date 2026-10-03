@@ -23,6 +23,35 @@ export type NewInstance = {
   profilePicUrl?: string | null;
 };
 
+export type MetaGraphError = {
+  code: number | null;
+  error_subcode: number | null;
+  type: string | null;
+  message: string | null;
+  fbtrace_id: string | null;
+};
+
+/** Un cambio de estado visto por el chequeo, o un aviso de cuenta que mandó Meta por webhook. */
+export type MetaHistorialEntrada =
+  | {
+      tipo: "estado";
+      at: string;
+      de: string | null;
+      a: string | null;
+      codigoDe: string | null;
+      codigoA: string | null;
+      error: string | null;
+    }
+  | {
+      tipo: "aviso";
+      at: string;
+      metaAt: string | null;
+      field: string;
+      wabaId: string | null;
+      resumen: string;
+      value: unknown;
+    };
+
 export type Instance = {
   id: string;
   name: string;
@@ -62,7 +91,15 @@ export type Instance = {
   metaNewNameStatus?: string | null;
   metaProfilePicUrl?: string | null;
   connectionStatusGuardado?: string;
+  /** PD 2026-10-03: qué tipo de desconexión fue y desde cuándo (Luis). */
+  metaCodigo?: string | null;
+  metaGraphError?: MetaGraphError | null;
+  metaFailingSince?: string | null;
+  metaLastOkAt?: string | null;
+  metaHistorial?: MetaHistorialEntrada[];
+  metaUltimoAviso?: MetaHistorialEntrada | null;
 };
+
 
 export type Contact = {
   id: string;
