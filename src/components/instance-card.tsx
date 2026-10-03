@@ -2,7 +2,7 @@ import { Badge } from "@evoapi/design-system/badge";
 import { Button } from "@evoapi/design-system/button";
 import { Card, CardContent } from "@evoapi/design-system/card";
 import { FlaskConical, Settings, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import { TestInteractiveModal } from "@/components/test-interactive-modal";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 
 import { Instance } from "@/types/evolution.types";
+import { avisoMeta, esCloudApi, haceCuanto } from "@/lib/estado-meta";
 import { fotoVigente } from "@/lib/foto-perfil";
 
 const StatusBadge = ({ status }: { status?: string }) => {
@@ -32,69 +33,36 @@ interface InstanceCardProps {
   isDeleting?: boolean;
   onDelete: (instance: Instance) => void;
   /**
-   * PD 2026-09-14: sube cada vez que se pulsa «Actualizar». Sin esto la consulta a Meta de
-   * abajo solo corría al montar la tarjeta —sus dependencias no cambian al releer la lista—,
-   * así que el botón no la repetía y había que recargar la página.
+   * PD 2026-09-14: subía cada vez que se pulsaba «Actualizar», para repetir la consulta a Meta
+   * que hacía la tarjeta. 🆕 PD 2026-10-03: esa consulta ya la hace el backend y llega en
+   * `fetchInstances`, así que la tarjeta ya no lo usa (se deja para no tocar a quien lo pasa).
    */
   refreshKey?: number;
 }
 
 
-export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }: InstanceCardProps) {
+export function InstanceCard({ instance, isDeleting, onDelete }: InstanceCardProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [testOpen, setTestOpen] = useState(false);
-  const [dynProfile, setDynProfile] = useState<{
-    name?: string;
-    pic?: string;
-    displayPhone?: string;
-    nameStatus?: string;
-  } | null>(null);
   const [fotosRotas, setFotosRotas] = useState<string[]>([]);
   const numberFormatter = new Intl.NumberFormat(i18n.language);
 
-  // Auto-consultar Meta si es Cloud API para nombre, foto y número real de teléfono
-  useEffect(() => {
-    if (
-      instance.integration === "WHATSAPP-BUSINESS" &&
-      instance.number &&
-      instance.token
-    ) {
-      // PD 2026-09-06: `cache: "no-store"` a propósito. Las URLs de foto que devuelve Meta
-      // llevan su caducidad DENTRO de la propia dirección (el parámetro `oe=`), así que
-      // una respuesta servida desde la caché del navegador trae una dirección MUERTA: la
-      // imagen contesta 403 y la tarjeta se queda en blanco. Pasó ese día a las 15:33 RD,
-      // la hora exacta en que caducaba la que el navegador tenía guardada.
-      Promise.allSettled([
-        // PD 2026-09-14: `new_name_status` dice si Meta tiene un nombre NUEVO en revisión.
-        // 🔴 NO `name_status`: ese es el estado del nombre actual, y PD Cloud da PENDING_REVIEW
-        // sin haber pedido ningún cambio (se leyó mal y la tarjeta avisó de algo que no existía).
-        fetch(`https://graph.facebook.com/v21.0/${instance.number}?fields=verified_name,display_phone_number,new_name_status`, {
-          headers: { Authorization: `Bearer ${instance.token}` },
-          cache: "no-store",
-        }).then((r) => (r.ok ? r.json() : null)),
-        fetch(`https://graph.facebook.com/v21.0/${instance.number}/whatsapp_business_profile?fields=profile_picture_url`, {
-          headers: { Authorization: `Bearer ${instance.token}` },
-          cache: "no-store",
-        }).then((r) => (r.ok ? r.json() : null)),
-      ])
-        .then(([infoRes, picRes]) => {
-          const name = infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.verified_name : undefined;
-          const displayPhone =
-            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.display_phone_number : undefined;
-          const pic =
-            picRes.status === "fulfilled" && picRes.value?.data?.[0]
-              ? picRes.value.data[0].profile_picture_url
-              : undefined;
-          const nameStatus =
-            infoRes.status === "fulfilled" && infoRes.value ? infoRes.value.new_name_status : undefined;
-          if (name || pic || displayPhone) {
-            setDynProfile({ name, pic, displayPhone, nameStatus });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [instance.integration, instance.number, instance.token, refreshKey]);
+  // PD 2026-10-03: el nombre, la foto, el número visible y el estado de una Cloud API llegan del
+  // BACKEND (`fetchInstances`, que los pide a Meta cada 30 min y al pulsar «Actualizar»). Antes la
+  // tarjeta se los pedía a Graph desde el navegador con el token de la instancia: el token viajaba
+  // al navegador, y si Meta negaba el acceso la tarjeta no decía nada y seguía «Conectado».
+  const cloudApi = esCloudApi(instance);
+  const aviso = avisoMeta(instance);
+  const comprobadoMeta = cloudApi ? haceCuanto(instance.metaCheckedAt) : null;
+  const dynProfile = cloudApi
+    ? {
+        name: instance.metaVerifiedName ?? undefined,
+        pic: instance.metaProfilePicUrl ?? undefined,
+        displayPhone: instance.displayPhone ?? undefined,
+        nameStatus: instance.metaNewNameStatus ?? undefined,
+      }
+    : null;
 
   const displayName = dynProfile?.name || instance.profileName || instance.name;
 
@@ -106,6 +74,9 @@ export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }:
   const picUrl = candidatasFoto.find((u) => !fotosRotas.includes(u));
   const goToInstance = () => navigate(`/manager/instance/${instance.id}/dashboard`);
   const canTest = instance.connectionStatus === "open";
+  const numeroVisible = cloudApi
+    ? dynProfile?.displayPhone || null
+    : instance.ownerJid?.split("@")[0] || instance.number || null;
 
   return (
     <Card className="group relative overflow-hidden border-sidebar-border bg-sidebar py-0 gap-0 transition-all duration-300 hover:bg-sidebar-accent/30 hover:shadow-lg hover:shadow-black/10">
@@ -159,15 +130,22 @@ export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }:
               </p>
             </div>
           </div>
+
+          {/* PD 2026-10-03: por qué una Cloud API sale «Desconectado» (o el aviso, en ámbar). */}
+          {aviso && (
+            <p className={`w-full text-[11px] font-medium leading-snug ${aviso.grave ? "text-red-500" : "text-amber-500"}`}>
+              {aviso.texto}
+            </p>
+          )}
         </button>
 
         <div className="space-y-1 px-4 py-3 text-xs text-sidebar-foreground/70">
-          {(instance.ownerJid || dynProfile?.displayPhone || instance.number) && (
+          {/* PD 2026-10-03: en una Cloud API `number` es el Phone ID (tiene su fila abajo), no un
+              teléfono: si el backend aún no tiene el número visible, la fila no sale. */}
+          {numeroVisible && (
             <div className="flex items-center justify-between">
               <span>{t("dashboard.card.phone", { defaultValue: "Número" })}</span>
-              <span className="ml-2 truncate font-mono">
-                {dynProfile?.displayPhone || instance.ownerJid?.split("@")[0] || instance.number}
-              </span>
+              <span className="ml-2 truncate font-mono">{numeroVisible}</span>
             </div>
           )}
 
@@ -176,6 +154,18 @@ export function InstanceCard({ instance, isDeleting, onDelete, refreshKey = 0 }:
             <div className="flex items-center justify-between">
               <span>Phone ID</span>
               <span className="ml-2 truncate font-mono">{instance.number}</span>
+            </div>
+          )}
+          {cloudApi && (
+            <div className="flex items-center justify-between">
+              <span>Meta</span>
+              {instance.metaError || instance.metaAttemptError ? (
+                <TooltipWrapper content={<span className="block max-w-xs break-words text-xs">{instance.metaError || instance.metaAttemptError}</span>}>
+                  <span className="ml-2 truncate underline decoration-dotted underline-offset-2">{comprobadoMeta ?? "todavía no"}</span>
+                </TooltipWrapper>
+              ) : (
+                <span className="ml-2 truncate">{comprobadoMeta ?? "todavía no"}</span>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between">

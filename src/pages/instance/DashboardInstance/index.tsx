@@ -12,6 +12,7 @@ import QRCode from "react-qr-code";
 
 import { BaseHeader } from "@/components/base-header";
 import { InstanceStatus } from "@/components/instance-status";
+import { esCloudApi, haceCuanto } from "@/lib/estado-meta";
 import { InstanceToken } from "@/components/instance-token";
 import { useTheme } from "@/components/theme-provider";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -173,6 +174,8 @@ function DashboardInstance() {
   if (!instance) return <LoadingSpinner />;
 
   const connected = instance.connectionStatus === "open";
+  const cloudApi = esCloudApi(instance);
+  const comprobadoMeta = cloudApi ? haceCuanto(instance.metaCheckedAt) : null;
 
   return (
     <div className="flex flex-col">
@@ -249,7 +252,30 @@ function DashboardInstance() {
               </div>
             </div>
 
-            {!connected && (
+            {/* PD 2026-10-03: una Cloud API «Desconectado» lo está según Meta (el backend se lo
+                pregunta cada 30 min). No se vincula con QR: ofrecer el QR aquí sería un botón que
+                no hace nada. Se dice el motivo y dónde se arregla. */}
+            {!connected && cloudApi && (
+              <Alert variant="destructive" className="flex flex-col items-start gap-1">
+                <AlertTitle className="text-base font-bold text-red-500">
+                  {instance.metaMotivo || "Meta: el número no está disponible"}
+                </AlertTitle>
+                <p className="text-sm text-foreground/80">
+                  Es una instancia de la Cloud API: no se vincula con QR. Hay que revisarla en el Business Manager de
+                  Meta (estado del número y permisos de la app).
+                  {comprobadoMeta ? ` Comprobado ${comprobadoMeta}.` : ""}
+                </p>
+                {instance.metaError && <p className="break-all font-mono text-xs text-muted-foreground">{instance.metaError}</p>}
+              </Alert>
+            )}
+
+            {connected && cloudApi && instance.metaMotivo && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm font-semibold">{instance.metaMotivo}</AlertTitle>
+              </Alert>
+            )}
+
+            {!connected && !cloudApi && (
               <Alert variant="warning" className="flex flex-wrap items-center justify-between gap-3">
                 <AlertTitle className="text-lg font-bold tracking-wide">{t("instance.dashboard.alert")}</AlertTitle>
 

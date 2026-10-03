@@ -20,6 +20,8 @@ export type RefreshProfileResult = {
   nameStatus?: string | null;
   skipped?: string;
   error?: string;
+  /** PD 2026-10-03: el estado del número en Meta (solo Cloud API). */
+  meta?: { metaStatus: string | null; metaCheckedAt: string | null; metaConnected: boolean | null; metaMotivo: string | null };
   before?: { profileName: string | null; profilePicUrl: string | null };
   after?: { profileName: string | null; profilePicUrl: string | null };
 };

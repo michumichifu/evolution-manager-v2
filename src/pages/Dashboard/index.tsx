@@ -72,6 +72,11 @@ function Dashboard() {
       if (fallidas.length) {
         toast.warn(`No se pudo consultar: ${fallidas.join(", ")}`);
       }
+      // PD 2026-10-03: «Actualizar» también repasa el estado de cada Cloud API en Meta. Si alguna
+      // no funciona, se dice con su motivo (la tarjeta ya sale «Desconectado» al releer).
+      results
+        .filter((r) => r.meta?.metaConnected === false)
+        .forEach((r) => toast.error(`${r.instanceName}: ${r.meta?.metaMotivo}`, { autoClose: 12000 }));
       setRefreshInfoOpen(false);
     } catch {
       toast.error("No se pudo consultar a WhatsApp y Meta");

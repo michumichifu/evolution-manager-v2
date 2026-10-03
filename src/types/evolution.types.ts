@@ -43,6 +43,25 @@ export type Instance = {
     Contact?: number;
     Chat?: number;
   };
+  /**
+   * PD 2026-10-03: solo en las Cloud API, desde el backend (`salud-meta.service.ts`). Si Meta
+   * dice que el número no funciona, `connectionStatus` llega ya como "close" y lo guardado en
+   * la base viaja en `connectionStatusGuardado`.
+   */
+  metaStatus?: string | null;
+  metaCheckedAt?: string | null;
+  metaError?: string | null;
+  metaAttemptAt?: string | null;
+  metaAttemptError?: string | null;
+  metaConnected?: boolean | null;
+  metaMotivo?: string | null;
+  displayPhone?: string | null;
+  metaVerifiedName?: string | null;
+  metaQualityRating?: string | null;
+  metaNameStatus?: string | null;
+  metaNewNameStatus?: string | null;
+  metaProfilePicUrl?: string | null;
+  connectionStatusGuardado?: string;
 };
 
 export type Contact = {
