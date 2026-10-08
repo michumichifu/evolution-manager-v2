@@ -38,12 +38,22 @@ import { GoSendMessageModal } from "./GoSendMessageModal";
  */
 const QRCODE_REFRESH_INTERVAL_MS = 10_000;
 
+/**
+ * PD 2026-10-08: el código de emparejamiento también cambia solo (cada ~45 s, con cada ciclo de
+ * QR), y el diálogo enseñaba el primero que recibía y no lo volvía a pedir. Quien tardaba en
+ * escribirlo metía un código ya vencido. Se refresca más seguido que el QR porque un código
+ * vencido no se distingue a simple vista de uno bueno.
+ */
+const PAIRING_CODE_REFRESH_INTERVAL_MS = 5_000;
+
 function DashboardInstance() {
   const { t, i18n } = useTranslation();
   const numberFormatter = new Intl.NumberFormat(i18n.language);
   const [qrCode, setQRCode] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [pairingDialogOpen, setPairingDialogOpen] = useState(false);
+  const [pairingFailed, setPairingFailed] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [goQrOpen, setGoQrOpen] = useState(false);
   const [goSendOpen, setGoSendOpen] = useState(false);
@@ -114,27 +124,40 @@ function DashboardInstance() {
    * the button twice left two sockets racing for the same instance: the phone
    * would scan the code of one while the other overwrote the pairing state.
    */
-  const handleConnect = async (instanceName: string, wantPairing: boolean) => {
+  const handleConnect = async (instanceName: string, wantPairing: boolean, refresh = false) => {
     if (connectInFlight.current) return;
     connectInFlight.current = true;
-    setIsConnecting(true);
+    // PD 2026-10-08: un refresco no bloquea los botones ni borra lo que hay en pantalla; si no, el
+    // QR o el código parpadeaban a la rueda de carga en cada sondeo.
+    if (!refresh) setIsConnecting(true);
 
     try {
-      setQRCode(null);
+      if (!refresh) {
+        setQRCode(null);
+        setPairingCode("");
+        setPairingFailed(false);
+      }
       if (!token) return console.error("Token not found.");
 
       if (wantPairing) {
         const data = await connect({ instanceName, token, number: instance?.number });
-        setPairingCode(data.pairingCode);
+        if (data?.pairingCode) {
+          setPairingCode(data.pairingCode);
+          setPairingFailed(false);
+        } else if (!refresh) {
+          // Sin código tras la primera petición: se dice, en vez de dejar la rueda girando.
+          setPairingFailed(true);
+        }
       } else {
         const data = await connect({ instanceName, token });
-        setQRCode(data.code);
+        if (data?.code || !refresh) setQRCode(data?.code ?? null);
       }
     } catch (error) {
       console.error("Error:", error);
+      if (wantPairing && !refresh) setPairingFailed(true);
     } finally {
       connectInFlight.current = false;
-      setIsConnecting(false);
+      if (!refresh) setIsConnecting(false);
     }
   };
 
@@ -143,20 +166,36 @@ function DashboardInstance() {
     if (!qrDialogOpen || !instance) return;
 
     const intervalId = setInterval(() => {
-      handleConnect(instance.name, false);
+      handleConnect(instance.name, false, true);
     }, QRCODE_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
   }, [qrDialogOpen, instance?.name]);
 
+  // PD 2026-10-08: lo mismo para el código de emparejamiento. Con la generación de código ya en
+  // curso, el backend devuelve el código vigente sin abrir otra conexión.
+  useEffect(() => {
+    if (!pairingDialogOpen || !instance) return;
+
+    const intervalId = setInterval(() => {
+      handleConnect(instance.name, true, true);
+    }, PAIRING_CODE_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [pairingDialogOpen, instance?.name]);
+
   // Stop refreshing as soon as the instance is connected.
   useEffect(() => {
-    if (instance?.connectionStatus === "open") setQrDialogOpen(false);
+    if (instance?.connectionStatus === "open") {
+      setQrDialogOpen(false);
+      setPairingDialogOpen(false);
+    }
   }, [instance?.connectionStatus]);
 
   const closeQRCodePopup = async () => {
     setQRCode(null);
     setPairingCode("");
+    setPairingFailed(false);
     await reloadInstance();
   };
 
@@ -327,7 +366,7 @@ function DashboardInstance() {
                     </Dialog>
 
                     {instance.number && (
-                      <Dialog>
+                      <Dialog open={pairingDialogOpen} onOpenChange={setPairingDialogOpen}>
                         <DialogTrigger asChild>
                           <Button variant="outline" disabled={isConnecting} onClick={() => handleConnect(instance.name, true)}>
                             {t("instance.dashboard.button.pairingCode.label")}
@@ -342,7 +381,18 @@ function DashboardInstance() {
                                   <p className="mt-2 text-center font-mono text-2xl tracking-widest">
                                     {pairingCode.substring(0, 4)}-{pairingCode.substring(4, 8)}
                                   </p>
+                                  <p className="mt-3 text-center text-sm">
+                                    {t("instance.dashboard.button.pairingCode.rotates", {
+                                      defaultValue: "Este código cambia solo cada pocos segundos. Usa siempre el que ves aquí en este momento.",
+                                    })}
+                                  </p>
                                 </div>
+                              ) : pairingFailed ? (
+                                <p className="py-3 text-center">
+                                  {t("instance.dashboard.button.pairingCode.failed", {
+                                    defaultValue: "No se pudo generar el código. Cierra esta ventana y vuelve a intentarlo.",
+                                  })}
+                                </p>
                               ) : (
                                 <LoadingSpinner />
                               )}
