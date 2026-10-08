@@ -63,6 +63,12 @@ ssh root@89.117.73.129 'cd /opt/evolution-api && rm -rf manager-dist && tar xzf 
 
 ## 4. Los parches propios, en orden
 
+🔴 **8 oct 2026, 04:06 RD: los respaldos del servidor se borraron** (decisión de Luis: el código
+está en local y en GitHub). Ya no existe ningún `/root/manager-dist-respaldo-*.tgz` ni
+`manager-dist.bak-*`; las rutas de «Respaldo:» de la tabla son historia. **La vuelta atrás es
+recompilar un commit** y volver a hacer el `rsync`. El paso de «respaldo de lo que hay en vivo» del
+apartado 2 ya no se hace.
+
 | Commit | Qué arregla | Bundle desplegado |
 |---|---|---|
 | `6498e1e` (8 oct 2026) | **El diálogo de borrado se cerraba solo a los 1,5 s** de llegar al 100 % (Luis: *«no se alcanza a leer bien lo que hizo, se cierra solo»*). Ahora **se queda abierto** en «Eliminada al 100 %», con una línea que dice qué se borró (la sesión de WhatsApp, los chats, contactos y mensajes guardados en Evolution, los ajustes e integraciones) y un botón «Cerrar». ⚠️ Sigue sin verse en pantalla por el agente (no borra datos desde el navegador). | `index-Cq9lgY0t.js` |
