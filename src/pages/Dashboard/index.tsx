@@ -135,10 +135,9 @@ function Dashboard() {
         return;
       }
 
+      // No se cierra solo: Luis (8 oct), «no se alcanza a leer bien lo que hizo, se cierra solo».
+      // Se queda en el 100 % con el resumen hasta que se pulsa «Cerrar».
       setDeleteStep(4);
-      toast.success(t("toast.instance.deleted", { defaultValue: "Instância removida com sucesso!" }));
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      closeDeleteModal();
     } catch (error: unknown) {
       console.error("Error instance delete:", error);
       const message = error instanceof Error ? error.message : "Erro ao remover instância";
@@ -373,9 +372,20 @@ function Dashboard() {
               </ul>
 
               {deleteStep === 4 && (
-                <p className="text-sm text-green-500">
-                  {t("modal.delete.progress.doneMessage", { defaultValue: "Eliminada al 100 %. El servidor ya no la devuelve." })}
-                </p>
+                <>
+                  <p className="text-sm text-green-500">
+                    {t("modal.delete.progress.doneMessage", { defaultValue: "Eliminada al 100 %. El servidor ya no la devuelve." })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("modal.delete.progress.doneDetail", {
+                      defaultValue:
+                        "Con ella se borraron su sesión de WhatsApp, sus chats, contactos y mensajes guardados en Evolution, y sus ajustes e integraciones. En WhatsApp, el dispositivo vinculado desaparece del teléfono.",
+                    })}
+                  </p>
+                  <DialogFooter>
+                    <Button onClick={closeDeleteModal}>{t("button.close", { defaultValue: "Cerrar" })}</Button>
+                  </DialogFooter>
+                </>
               )}
 
               {deleteStep === -1 && (
