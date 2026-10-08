@@ -31,6 +31,7 @@ function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState<Instance | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingName, setDeletingName] = useState<string | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState("");
   const [searchStatus, setSearchStatus] = useState("all");
   const [refreshInfoOpen, setRefreshInfoOpen] = useState(false);
@@ -100,11 +101,26 @@ function Dashboard() {
       } catch (error) {
         console.error("Error logout:", error);
       }
+      const id = deleteTarget.id;
       await deleteInstance(name);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      await resetTable();
+      // PD 2026-10-08: el backend contesta «Instance deleted» y la borra DESPUÉS, por un evento
+      // (`remove.instance`). El refresco que había aquí, 1 s más tarde, seguía recibiéndola y la
+      // tarjeta se quedaba en pantalla hasta recargar la pestaña (Luis, 8 oct). Ahora se oculta
+      // en el momento, por su id —una nueva con el mismo nombre trae otro id y sí se ve—, y se
+      // le pregunta al servidor hasta que deje de devolverla.
+      setHiddenIds((ids) => [...ids, id]);
       toast.success(t("toast.instance.deleted", { defaultValue: "Instância removida com sucesso!" }));
       closeDeleteModal();
+      const confirmarBorrado = async () => {
+        for (let i = 0; i < 10; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const { data } = await refetch();
+          if (!data?.some((inst) => inst.id === id)) break;
+        }
+        // Si a los 15 s el servidor la sigue devolviendo, no se borró: que se vuelva a ver.
+        setHiddenIds((ids) => ids.filter((x) => x !== id));
+      };
+      confirmarBorrado().catch((error) => console.error("Error confirmando el borrado:", error));
     } catch (error: unknown) {
       console.error("Error instance delete:", error);
       const message = error instanceof Error ? error.message : "Erro ao remover instância";
@@ -115,14 +131,14 @@ function Dashboard() {
   };
 
   const filteredInstances = useMemo(() => {
-    let list = instances ?? [];
+    let list = (instances ?? []).filter((i) => !hiddenIds.includes(i.id));
     if (searchStatus !== "all") {
       list = list.filter((i) => i.connectionStatus === searchStatus);
     }
     const q = nameSearch.trim().toLowerCase();
     if (!q) return list;
     return list.filter((i) => i.name.toLowerCase().includes(q) || (i.profileName && i.profileName.toLowerCase().includes(q)));
-  }, [instances, nameSearch, searchStatus]);
+  }, [instances, nameSearch, searchStatus, hiddenIds]);
 
   const instanceStatuses = [
     { value: "all", label: t("status.all") },
