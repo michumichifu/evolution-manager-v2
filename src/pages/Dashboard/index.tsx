@@ -8,7 +8,7 @@ import {
 } from "@evoapi/design-system/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@evoapi/design-system/skeleton";
-import { ChevronsUpDown, Layers, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Circle, Layers, Loader2, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -32,6 +32,8 @@ function Dashboard() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  // 0 = sin empezar · 1 cerrar sesión · 2 borrar · 3 esperar al servidor · 4 hecho · -1 no se borró
+  const [deleteStep, setDeleteStep] = useState(0);
   const [nameSearch, setNameSearch] = useState("");
   const [searchStatus, setSearchStatus] = useState("all");
   const [refreshInfoOpen, setRefreshInfoOpen] = useState(false);
@@ -89,42 +91,59 @@ function Dashboard() {
   const closeDeleteModal = () => {
     setDeleteTarget(null);
     setDeleteConfirmText("");
+    setDeleteStep(0);
   };
 
+  /**
+   * PD 2026-10-08: el borrado, paso a paso y a la vista. El backend contesta «Instance deleted» y
+   * la borra DESPUÉS, por un evento (`remove.instance`); el refresco que había aquí, 1 s más tarde,
+   * seguía recibiéndola y la tarjeta se quedaba en pantalla hasta recargar la pestaña. Luis: «si el
+   * servidor tarda en eliminar la instancia, debería salir… una barra de progreso, tal cual, y
+   * abajo… eliminando tal, tal, tal. Y luego cuando esté correcto, eliminado 100%, ya uno sabe».
+   * El diálogo no dice «eliminada» hasta que el servidor deja de devolverla.
+   */
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const name = deleteTarget.name;
+    const id = deleteTarget.id;
     setDeletingName(name);
     try {
+      setDeleteStep(1);
       try {
         await logout(name);
       } catch (error) {
         console.error("Error logout:", error);
       }
-      const id = deleteTarget.id;
+
+      setDeleteStep(2);
       await deleteInstance(name);
-      // PD 2026-10-08: el backend contesta «Instance deleted» y la borra DESPUÉS, por un evento
-      // (`remove.instance`). El refresco que había aquí, 1 s más tarde, seguía recibiéndola y la
-      // tarjeta se quedaba en pantalla hasta recargar la pestaña (Luis, 8 oct). Ahora se oculta
-      // en el momento, por su id —una nueva con el mismo nombre trae otro id y sí se ve—, y se
-      // le pregunta al servidor hasta que deje de devolverla.
+
+      // Se oculta por su id: una nueva con el mismo nombre trae otro id y sí se ve.
+      setDeleteStep(3);
       setHiddenIds((ids) => [...ids, id]);
+      let gone = false;
+      for (let i = 0; i < 20 && !gone; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        const { data } = await refetch();
+        gone = !data?.some((inst) => inst.id === id);
+      }
+      setHiddenIds((ids) => ids.filter((x) => x !== id));
+
+      if (!gone) {
+        // 15 s y el servidor la sigue devolviendo: no se borró. Se dice y vuelve a verse.
+        setDeleteStep(-1);
+        return;
+      }
+
+      setDeleteStep(4);
       toast.success(t("toast.instance.deleted", { defaultValue: "Instância removida com sucesso!" }));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       closeDeleteModal();
-      const confirmarBorrado = async () => {
-        for (let i = 0; i < 10; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          const { data } = await refetch();
-          if (!data?.some((inst) => inst.id === id)) break;
-        }
-        // Si a los 15 s el servidor la sigue devolviendo, no se borró: que se vuelva a ver.
-        setHiddenIds((ids) => ids.filter((x) => x !== id));
-      };
-      confirmarBorrado().catch((error) => console.error("Error confirmando el borrado:", error));
     } catch (error: unknown) {
       console.error("Error instance delete:", error);
       const message = error instanceof Error ? error.message : "Erro ao remover instância";
       toast.error(message);
+      setDeleteStep(0);
     } finally {
       setDeletingName(null);
     }
@@ -264,7 +283,8 @@ function Dashboard() {
 
       <NewInstance resetTable={resetTable} open={createOpen} onOpenChange={setCreateOpen} />
 
-      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && closeDeleteModal()}>
+      {/* Mientras se está borrando (pasos 1 a 3) el diálogo no se puede cerrar. */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && !(deleteStep >= 1 && deleteStep <= 3) && closeDeleteModal()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-500">
@@ -272,33 +292,108 @@ function Dashboard() {
               {t("modal.delete.title")}
             </DialogTitle>
             <DialogDescription>
-              {t("modal.delete.message", { instanceName: deleteTarget?.name ?? "" })}
+              {deleteStep === 0
+                ? t("modal.delete.message", { instanceName: deleteTarget?.name ?? "" })
+                : t("modal.delete.progress.subtitle", { defaultValue: "Instancia «{{instanceName}}»", instanceName: deleteTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t("modal.delete.confirm", { defaultValue: "Digite o nome da instância para confirmar:" })}
-            </label>
-            <Input
-              placeholder={deleteTarget?.name}
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-            />
-          </div>
+          {deleteStep === 0 ? (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t("modal.delete.confirm", { defaultValue: "Digite o nome da instância para confirmar:" })}
+                </label>
+                <Input
+                  placeholder={deleteTarget?.name}
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                />
+              </div>
 
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={closeDeleteModal}>
-              {t("button.cancel")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={!confirmValid || deletingName === deleteTarget?.name}
-            >
-              {deletingName === deleteTarget?.name ? t("button.deleting") : t("button.delete")}
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="flex gap-2">
+                <Button variant="outline" onClick={closeDeleteModal}>
+                  {t("button.cancel")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={!confirmValid || deletingName === deleteTarget?.name}
+                >
+                  {deletingName === deleteTarget?.name ? t("button.deleting") : t("button.delete")}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <div className="space-y-4" aria-live="polite">
+              <div className="flex items-center justify-between text-sm font-medium">
+                <span>
+                  {deleteStep === 4
+                    ? t("modal.delete.progress.done", { defaultValue: "Eliminada" })
+                    : deleteStep === -1
+                      ? t("modal.delete.progress.failed", { defaultValue: "No se pudo confirmar" })
+                      : t("modal.delete.progress.working", { defaultValue: "Eliminando…" })}
+                </span>
+                <span className="tabular-nums">{deleteStep === -1 ? 75 : deleteStep * 25}%</span>
+              </div>
+
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={deleteStep === -1 ? 75 : deleteStep * 25}>
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${deleteStep === -1 ? "bg-red-500" : "bg-primary"}`}
+                  style={{ width: `${deleteStep === -1 ? 75 : deleteStep * 25}%` }}
+                />
+              </div>
+
+              <ul className="space-y-2 text-sm">
+                {[
+                  t("modal.delete.progress.step1", { defaultValue: "Cerrar la sesión en WhatsApp" }),
+                  t("modal.delete.progress.step2", { defaultValue: "Eliminar la instancia" }),
+                  t("modal.delete.progress.step3", { defaultValue: "Esperar a que el servidor termine de borrarla" }),
+                ].map((label, index) => {
+                  const step = index + 1;
+                  const reached = deleteStep === -1 ? 3 : deleteStep;
+                  const done = reached > step || deleteStep === 4;
+                  const failed = deleteStep === -1 && step === 3;
+                  const current = !done && !failed && reached === step;
+                  return (
+                    <li key={label} className={`flex items-center gap-2 ${done || current || failed ? "" : "text-muted-foreground"}`}>
+                      {done ? (
+                        <Check className="h-4 w-4 shrink-0 text-green-500" />
+                      ) : failed ? (
+                        <X className="h-4 w-4 shrink-0 text-red-500" />
+                      ) : current ? (
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                      ) : (
+                        <Circle className="h-4 w-4 shrink-0" />
+                      )}
+                      <span>{label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {deleteStep === 4 && (
+                <p className="text-sm text-green-500">
+                  {t("modal.delete.progress.doneMessage", { defaultValue: "Eliminada al 100 %. El servidor ya no la devuelve." })}
+                </p>
+              )}
+
+              {deleteStep === -1 && (
+                <>
+                  <p className="text-sm text-red-500">
+                    {t("modal.delete.progress.failedMessage", {
+                      defaultValue: "Pasaron 15 segundos y el servidor todavía devuelve esta instancia. Puede que no se haya borrado: revisa la lista antes de volver a crearla.",
+                    })}
+                  </p>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={closeDeleteModal}>
+                      {t("button.close", { defaultValue: "Cerrar" })}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
