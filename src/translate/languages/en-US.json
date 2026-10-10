@@ -6,6 +6,7 @@
     "settings": "Settings",
     "instancesNotFound": "No instances found",
     "subtitle": "Manage your WhatsApp instances",
+    "sort": { "title": "Sort", "name": "By name (A-Z)", "recent": "Newest first" },
     "card": {
       "phone": "Number"
     },

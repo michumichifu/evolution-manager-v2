@@ -8,7 +8,7 @@ import {
 } from "@evoapi/design-system/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@evoapi/design-system/skeleton";
-import { Check, ChevronsUpDown, Circle, Layers, Loader2, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ArrowDownAZ, Check, ChevronsUpDown, Circle, Layers, Loader2, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -24,6 +24,8 @@ import { Instance } from "@/types/evolution.types";
 
 import { NewInstance } from "./NewInstance";
 
+const SORT_KEY = "pd.dashboard.orden";
+
 function Dashboard() {
   const { t } = useTranslation();
 
@@ -36,6 +38,23 @@ function Dashboard() {
   const [deleteStep, setDeleteStep] = useState(0);
   const [nameSearch, setNameSearch] = useState("");
   const [searchStatus, setSearchStatus] = useState("all");
+  // PD 2026-10-10: el orden de las tarjetas. Por nombre de la instancia (el que le ponemos
+  // nosotros, no el de la cuenta de WhatsApp), y se recuerda en el navegador.
+  const [sortBy, setSortBy] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "name";
+    } catch {
+      return "name";
+    }
+  });
+  const changeSort = (value: string) => {
+    setSortBy(value);
+    try {
+      localStorage.setItem(SORT_KEY, value);
+    } catch {
+      // sin almacenamiento el orden vale igual, solo no se recuerda
+    }
+  };
   const [refreshInfoOpen, setRefreshInfoOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -154,15 +173,27 @@ function Dashboard() {
       list = list.filter((i) => i.connectionStatus === searchStatus);
     }
     const q = nameSearch.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((i) => i.name.toLowerCase().includes(q) || (i.profileName && i.profileName.toLowerCase().includes(q)));
-  }, [instances, nameSearch, searchStatus, hiddenIds]);
+    if (q) {
+      list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.profileName && i.profileName.toLowerCase().includes(q)));
+    }
+    // `numeric` pone «2» antes que «10»; `base` no distingue mayúsculas ni tildes.
+    const porNombre = (x: Instance, y: Instance) => x.name.localeCompare(y.name, "es", { numeric: true, sensitivity: "base" });
+    if (sortBy === "recent") {
+      return [...list].sort((x, y) => (y.createdAt ?? "").localeCompare(x.createdAt ?? "") || porNombre(x, y));
+    }
+    return [...list].sort(porNombre);
+  }, [instances, nameSearch, searchStatus, hiddenIds, sortBy]);
 
   const instanceStatuses = [
     { value: "all", label: t("status.all") },
     { value: "close", label: t("status.closed") },
     { value: "connecting", label: t("status.connecting") },
     { value: "open", label: t("status.open") },
+  ];
+
+  const sortOptions = [
+    { value: "name", label: t("dashboard.sort.name", { defaultValue: "Por nombre (A-Z)" }) },
+    { value: "recent", label: t("dashboard.sort.recent", { defaultValue: "Más recientes primero" }) },
   ];
 
   const totalCount = filteredInstances.length;
@@ -209,6 +240,30 @@ function Dashboard() {
                   checked={searchStatus === s.value}
                   onCheckedChange={(checked) => {
                     if (checked) setSearchStatus(s.value);
+                  }}
+                >
+                  {s.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Botón Ordenar */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 active:scale-95 transition-transform duration-150">
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                {t("dashboard.sort.title", { defaultValue: "Ordenar" })}
+                <ChevronsUpDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {sortOptions.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s.value}
+                  checked={sortBy === s.value}
+                  onCheckedChange={(checked) => {
+                    if (checked) changeSort(s.value);
                   }}
                 >
                   {s.label}

@@ -2,6 +2,7 @@
   "dashboard": {
     "title": "Instâncias",
     "subtitle": "Gerencie suas instâncias WhatsApp",
+    "sort": { "title": "Ordenar", "name": "Por nome (A-Z)", "recent": "Mais recentes primeiro" },
     "search": "Pesquisar",
     "status": "Status",
     "settings": "Configurações",

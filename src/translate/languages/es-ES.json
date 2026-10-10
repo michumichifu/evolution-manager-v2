@@ -6,6 +6,7 @@
     "settings": "Configuraciones",
     "instancesNotFound": "No se encontraron instancias",
     "subtitle": "Administre sus instancias de WhatsApp",
+    "sort": { "title": "Ordenar", "name": "Por nombre (A-Z)", "recent": "Más recientes primero" },
     "card": {
       "phone": "Número"
     },
