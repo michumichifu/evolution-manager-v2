@@ -32,9 +32,18 @@ const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
  *   · Tiene usuario Y teléfono          → LOS DOS. Ahí no sobra ninguno de los dos.
  *   · Tiene usuario y oculta el número  → solo el usuario, que es lo único que hay.
  *
- * 🔴 El identificador `<id>@lid` NO es un teléfono y no se enseña como tal: solo aparece
- * cuando esa persona no tiene usuario y no hay absolutamente nada más con que nombrarla.
+ * 🔴 El identificador `<id>@lid` NO es un teléfono y NO SE ENSEÑA NUNCA (Luis, 11 oct 2026:
+ * «siguen mostrando números que no son número de WhatsApp, ni el nombre de la cuenta, o el
+ * número de teléfono de la cuenta, o el usuario de la cuenta»). Si de esa persona no se sabe ni
+ * el usuario, se dice eso: el usuario llega cuando se le contesta desde la instancia.
  */
+export const SIN_NUMERO = "Número oculto";
+export const SIN_USUARIO = "Sin usuario todavía";
+
+/** El nombre de arriba: la cuenta, si no el usuario, si no el teléfono. Nunca el `@lid`. */
+export const nombreDelChat = (chat: { remoteJid: string; pushName?: string | null; usuarioWa?: string | null }): string =>
+  chat.pushName || chat.usuarioWa || (chat.remoteJid.includes("@lid") ? SIN_NUMERO : formatJid(chat.remoteJid));
+
 export const subtituloDelChat = (
   chat: { remoteJid: string; usuarioWa?: string | null },
   nombreDeArriba?: string,
@@ -43,9 +52,9 @@ export const subtituloDelChat = (
   const usuario = chat.usuarioWa || "";
   const ocultaElNumero = chat.remoteJid.includes("@lid");
 
-  if (!usuario) return identificador;
+  if (!usuario) return ocultaElNumero ? SIN_USUARIO : identificador;
   if (!ocultaElNumero) return `${identificador} · ${usuario}`;
-  return usuario === nombreDeArriba ? identificador : usuario;
+  return usuario === nombreDeArriba ? SIN_NUMERO : usuario;
 };
 
 // 🔴 Un solo chat sin `remoteJid` tumbaba TODA la vista (`Cannot read properties of null`),
@@ -232,7 +241,7 @@ function Chat() {
               const selected = remoteJid === chat.remoteJid;
               // PARCHE PD (9 sep 2026): arriba el nombre de la cuenta; si WhatsApp no manda
               // ninguno, el usuario, que identifica mucho mejor que el numerón.
-              const name = chat.pushName || chat.usuarioWa || formatJid(chat.remoteJid);
+              const name = nombreDelChat(chat);
               // Y abajo, los TRES casos que pidió Luis, que tienen que funcionar los tres:
               //   · sin usuario            → el teléfono, como siempre
               //   · usuario Y teléfono     → LOS DOS, que ahí no sobra ninguno

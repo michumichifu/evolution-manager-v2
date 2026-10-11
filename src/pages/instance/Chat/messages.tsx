@@ -18,7 +18,7 @@ import { getToken, TOKEN_ID } from "@/lib/queries/token";
 import { Message } from "@/types/evolution.types";
 
 import { connectSocket, disconnectSocket } from "@/services/websocket/socket";
-import { subtituloDelChat } from "./index";
+import { nombreDelChat, subtituloDelChat } from "./index";
 
 // Import components from EmbedChatMessage for attachment functionality
 import { MediaOptions } from "../EmbedChatMessage/InputMessage/media-options";
@@ -787,7 +787,7 @@ function Messages({ textareaRef, handleTextareaChange, textareaHeight, lastMessa
   // PARCHE PD (9 sep 2026): en la cabecera, lo mismo que en la lista de chats — arriba el
   // nombre de la cuenta y debajo, donde iría el teléfono que quien oculta su número no
   // tiene, su NOMBRE DE USUARIO de WhatsApp. El identificador solo si no hay usuario.
-  const headerName = chat?.pushName || chat?.usuarioWa || chat?.remoteJid?.split("@")[0];
+  const headerName = chat?.remoteJid ? nombreDelChat(chat) : "";
   // Mismo criterio que la lista, y de la misma función: sin usuario el teléfono; con
   // usuario y teléfono, los dos; y solo el usuario cuando esa persona oculta su número.
   const headerSub = chat?.remoteJid ? subtituloDelChat(chat, headerName) : "";
