@@ -34,11 +34,12 @@ const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
  *
  * 🔴 El identificador `<id>@lid` NO es un teléfono y NO SE ENSEÑA NUNCA (Luis, 11 oct 2026:
  * «siguen mostrando números que no son número de WhatsApp, ni el nombre de la cuenta, o el
- * número de teléfono de la cuenta, o el usuario de la cuenta»). Si de esa persona no se sabe ni
- * el usuario, se dice eso: el usuario llega cuando se le contesta desde la instancia.
+ * número de teléfono de la cuenta, o el usuario de la cuenta»). Esa persona TIENE teléfono o usuario
+ * (Luis: «eso es imposible»); si aquí no se guardó ninguno de los dos, se dice que no se recuperó, no que no
+ * existe.
  */
-export const SIN_NUMERO = "Número oculto";
-export const SIN_USUARIO = "Sin usuario todavía";
+export const SIN_NUMERO = "Sin identificar";
+export const SIN_USUARIO = "Teléfono y usuario no recuperados";
 
 /** El nombre de arriba: la cuenta, si no el usuario, si no el teléfono. Nunca el `@lid`. */
 export const nombreDelChat = (chat: { remoteJid: string; pushName?: string | null; usuarioWa?: string | null }): string =>
