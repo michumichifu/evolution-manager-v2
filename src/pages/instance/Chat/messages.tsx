@@ -330,9 +330,107 @@ const AudioDelMensaje = ({ message }: { message: Message }) => {
   return src ? <audio controls src={src} className="block h-10" style={{ width: "280px", maxWidth: "100%" }} /> : <ArchivoNoDisponible que="el audio" estado={estado === "listo" ? "error" : estado} />;
 };
 
+/**
+ * PD (24 oct 2026): UNA PLANTILLA OFICIAL ENVIADA, COMO SE VE EN EL TELÉFONO.
+ *
+ * Por la Cloud API la plantilla se guardaba solo como texto: la foto del encabezado como «🖼️ (imagen)»
+ * y los botones como «▶️ Sí, quiero mi cita». Luis, con la del seguimiento de 72 h: *«no se veía la
+ * imagen, decía en texto imagen… debe haberse visto el mensaje completo»*. Desde el 24 oct el backend
+ * guarda las partes en `message.pdPlantilla` (`estructuraDePlantilla` de `evolution-api`); lo enviado
+ * antes solo tiene el texto, y de ahí se sacan el encabezado y los botones por sus marcas.
+ */
+type PartesDePlantilla = {
+  encabezado?: { tipo: string; texto?: string; enlace?: string };
+  cuerpo?: string;
+  pie?: string;
+  botones: { tipo: string; texto: string }[];
+};
+
+const MARCAS_DE_MEDIO: Record<string, string> = {
+  "🖼️ (imagen)": "imagen",
+  "🎬 (vídeo)": "video",
+  "📄 (documento)": "documento",
+  "📍 (ubicación)": "ubicacion",
+};
+const MARCAS_DE_BOTON: Record<string, string> = { "▶️": "respuesta", "🔗": "url", "📞": "telefono", "📋": "codigo" };
+const ICONOS_DE_BOTON: Record<string, string> = { respuesta: "↩", url: "🔗", telefono: "📞", codigo: "📋" };
+
+function partesDePlantilla(message: Message): PartesDePlantilla | undefined {
+  const guardadas = message.message?.pdPlantilla as PartesDePlantilla | undefined;
+  if (guardadas) return { ...guardadas, botones: guardadas.botones ?? [] };
+
+  // Lo de antes del 24 oct: solo salientes, y solo si lleva la marca de la foto al principio o un
+  // último bloque hecho entero de botones (así lo escribía `textoDePlantilla`).
+  const texto = message.message?.conversation;
+  if (!message.key?.fromMe || typeof texto !== "string") return undefined;
+
+  const bloques = texto.split("\n\n");
+  let encabezado: PartesDePlantilla["encabezado"];
+  const primero = bloques[0]?.trim();
+  if (primero && MARCAS_DE_MEDIO[primero]) {
+    encabezado = { tipo: MARCAS_DE_MEDIO[primero] };
+    bloques.shift();
+  }
+
+  let botones: PartesDePlantilla["botones"] = [];
+  const lineas = (bloques[bloques.length - 1] ?? "").split("\n").filter((l) => l.trim());
+  const deBoton = (linea: string) => Object.keys(MARCAS_DE_BOTON).find((marca) => linea.startsWith(`${marca} `));
+  if (bloques.length > 1 && lineas.length && lineas.every(deBoton)) {
+    botones = lineas.map((linea) => {
+      const marca = deBoton(linea) as string;
+      return { tipo: MARCAS_DE_BOTON[marca], texto: linea.slice(marca.length).trim() };
+    });
+    bloques.pop();
+  }
+
+  if (!encabezado && !botones.length) return undefined;
+  return { encabezado, cuerpo: bloques.join("\n\n"), botones };
+}
+
+const FotoDePlantilla = ({ enlace }: { enlace?: string }) => {
+  const [fallo, setFallo] = useState(false);
+  if (!enlace || fallo) {
+    // El enlace de ejemplo de Meta caduca, y lo enviado antes del 24 oct no guardó ninguno.
+    return <div className="rounded-md border border-current/20 px-3 py-6 text-center text-xs opacity-70">🖼️ Imagen de la plantilla (no se guardó en el historial)</div>;
+  }
+  return <img src={enlace} alt="" onError={() => setFallo(true)} className="h-auto max-w-full rounded-md" style={{ maxWidth: "400px", maxHeight: "400px", objectFit: "contain" }} loading="lazy" />;
+};
+
+const PlantillaDelMensaje = ({ partes }: { partes: PartesDePlantilla }) => {
+  const { encabezado, cuerpo, pie, botones } = partes;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {encabezado?.tipo === "imagen" && <FotoDePlantilla enlace={encabezado.enlace} />}
+      {encabezado && ["video", "documento", "ubicacion"].includes(encabezado.tipo) && (
+        <div className="rounded-md border border-current/20 px-3 py-3 text-center text-xs opacity-70">
+          {encabezado.tipo === "video" ? "🎬 Video de la plantilla" : encabezado.tipo === "documento" ? "📄 Documento de la plantilla" : "📍 Ubicación de la plantilla"}
+        </div>
+      )}
+      {encabezado?.tipo === "texto" && encabezado.texto && <p className="font-semibold">{encabezado.texto}</p>}
+      {cuerpo && <p className="whitespace-pre-wrap">{conNegritas(cuerpo)}</p>}
+      {pie && <p className="text-xs opacity-70">{pie}</p>}
+      {botones.length > 0 && (
+        <div className="-mx-3 -mb-2 mt-1">
+          {botones.map((boton, i) => (
+            <div key={i} className="flex items-center justify-center gap-1.5 border-t border-current/20 px-3 py-2 font-medium">
+              <span aria-hidden className="opacity-70">
+                {ICONOS_DE_BOTON[boton.tipo] ?? "↩"}
+              </span>
+              {boton.texto}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Component to render different message types based on messageType
 const MessageContent = ({ message }: { message: Message }) => {
   const messageType = message.messageType as string;
+
+  const plantilla = messageType === "conversation" ? partesDePlantilla(message) : undefined;
+  if (plantilla) return <PlantillaDelMensaje partes={plantilla} />;
 
   switch (messageType) {
     case "conversation":
