@@ -39,11 +39,23 @@ const formatJid = (remoteJid: string): string => remoteJid.split("@")[0];
  * existe.
  */
 export const SIN_NUMERO = "Sin identificar";
+
+/**
+ * 🔴 PARCHE PD (24 oct 2026): por la Cloud API, quien oculta su número NO llega como `@lid`
+ * sino con el identificador fijo de Meta (BSUID), `DO.1405232385029568`: país, punto y cifras,
+ * **sin arroba**. Tampoco es un teléfono. La lista lo descartaba (no es `@s.whatsapp.net` ni
+ * `@lid`) y esos chats no salían en ninguna pestaña: 68 de ~600 en «Dento Estetic 2 - API» el
+ * 24 oct. Luis: *«¿por qué no veo ninguna conversación de ese usuario aquí?»*.
+ */
+const esBsuid = (remoteJid: string): boolean => /^[A-Z]{2}\.[0-9]+$/.test(remoteJid);
+
+/** Sin teléfono: el `@lid` del QR o el BSUID de la Cloud API. Ninguno de los dos se enseña. */
+const ocultaSuNumero = (remoteJid: string): boolean => remoteJid.includes("@lid") || esBsuid(remoteJid);
 export const SIN_USUARIO = "Teléfono y usuario no recuperados";
 
 /** El nombre de arriba: la cuenta, si no el usuario, si no el teléfono. Nunca el `@lid`. */
 export const nombreDelChat = (chat: { remoteJid: string; pushName?: string | null; usuarioWa?: string | null }): string =>
-  chat.pushName || chat.usuarioWa || (chat.remoteJid.includes("@lid") ? SIN_NUMERO : formatJid(chat.remoteJid));
+  chat.pushName || chat.usuarioWa || (ocultaSuNumero(chat.remoteJid) ? SIN_NUMERO : formatJid(chat.remoteJid));
 
 export const subtituloDelChat = (
   chat: { remoteJid: string; usuarioWa?: string | null },
@@ -51,7 +63,7 @@ export const subtituloDelChat = (
 ): string => {
   const identificador = formatJid(chat.remoteJid);
   const usuario = chat.usuarioWa || "";
-  const ocultaElNumero = chat.remoteJid.includes("@lid");
+  const ocultaElNumero = ocultaSuNumero(chat.remoteJid);
 
   if (!usuario) return ocultaElNumero ? SIN_USUARIO : identificador;
   if (!ocultaElNumero) return `${identificador} · ${usuario}`;
@@ -163,14 +175,16 @@ function Chat() {
     // de número de teléfono»*.
     const filtered = allChats.filter((c) =>
       isContacts
-        ? c.remoteJid.includes("@s.whatsapp.net") || c.remoteJid.includes("@lid")
+        ? c.remoteJid.includes("@s.whatsapp.net") || ocultaSuNumero(c.remoteJid)
         : c.remoteJid.includes("@g.us"),
     );
     if (!search.trim()) return filtered;
-    const q = search.toLowerCase();
+    // El usuario se busca con su arroba o sin ella: WhatsApp lo manda de las dos formas.
+    const q = search.toLowerCase().trim().replace(/^@+/, "");
     return filtered.filter(
       (c) =>
         (c.pushName && c.pushName.toLowerCase().includes(q)) ||
+        (c.usuarioWa && c.usuarioWa.toLowerCase().includes(q)) ||
         c.remoteJid.toLowerCase().includes(q),
     );
   }, [allChats, kind, search]);
